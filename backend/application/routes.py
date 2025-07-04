@@ -2,6 +2,18 @@ from flask import current_app as app, jsonify, request, abort
 from .models import User
 from flask_jwt_extended import create_access_token, current_user, jwt_required
 
+def role_required(required_role):
+    def wrapper(fn):
+        @jwt_required()
+        def decorator(*args, **kwargs):
+            if current_user.role != required_role:
+                return jsonify({"msg": "Unauthorized"}), 403
+            return fn(*args, **kwargs)
+        return decorator
+    return wrapper
+
+
+
 @app.route('/login', methods=['POST'])
 def login():
     username = request.json.get('username', None)
@@ -24,3 +36,11 @@ def login():
 #         password=current_user.password,
 #         role=current_user.role
 #     )
+
+@app.route("/dashboard", methods=["GET"])
+@jwt_required()
+def dashboard():
+    if current_user.role == "admin":
+        return "Welcome to the admin dashboard!"
+    else:
+        return "Welcome to the user dashboard!"
