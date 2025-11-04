@@ -30,7 +30,7 @@ def login():
         return jsonify("Wrong username or password"), 401
 
     access_token = create_access_token(identity=user)
-    return jsonify(access_token=access_token)
+    return jsonify(access_token=access_token), 200
 
 
 @app.route("/api/register", methods=["POST"])
@@ -46,15 +46,52 @@ def register():
     user = User(username=username, email=email, password=password)
     db.session.add(user)
     db.session.commit()
-    return jsonify("User created successfully")
+    return jsonify("User created successfully"), 201
 
-@app.route("/api/dashboard", methods=["GET"])
+@app.route("/api/dashboard")
 @jwt_required()
 def dashboard():
     if current_user.role == "admin":
-        return "Welcome to the admin dashboard!"
+        users = User.query.filter_by(role="user").all()
+        reservations = Reservation.query.all()
+        parking_lots = ParkingLot.query.all()
+        total_users = len(users)
+        parking_spots_json = []
+        for lot in parking_lots:
+            spots_dict = {}
+            spots_dict['id'] = lot.id
+            spots_dict['total_spots'] = lot.number_of_spots
+            spots_dict['available_spots'] = lot.available_spots
+            spots_dict['occupied_spots'] = lot.occupied_spots
+            parking_spots_json.append(spots_dict)
+
+        return jsonify(
+            message="Welcome to the admin dashboard!",
+            total_users=total_users,
+            total_reservations=len(reservations),
+            total_parking_lots=len(parking_lots),
+            parking_lots=parking_spots_json
+        ), 200
     else:
-        return "Welcome to the user dashboard!"
+        user = User.query.get(current_user.id)
+        if not user:
+            return jsonify("User not found"), 404
+        reservations = Reservation.query.filter_by(user_id=current_user.id).all()
+        res_json = []
+        for res in reservations:
+            res_dict = {}
+            res_dict['reservation_id'] = res.id
+            res_dict['spot_id'] = res.spot_id
+            res_dict['parking_timestamp'] = res.parking_timestamp
+            res_dict['leaving_timestamp'] = res.leaving_timestamp
+            res_dict['parking_cost'] = res.parking_cost
+            res_dict['status'] = res.status
+            res_json.append(res_dict)
+            
+        return jsonify(
+            message="Welcome to the user dashboard!",
+            reservations=res_json
+        ), 200
 
 
 # User Endpoints
@@ -75,7 +112,7 @@ def user_home():
         res_dict['parking_cost'] = res.parking_cost
         res_dict['status'] = res.status
         user_reg_json.append(res_dict)
-    return jsonify(user_reg_json)
+    return jsonify(user_reg_json), 200
 
 
 @app.route("/api/lots")
@@ -92,7 +129,7 @@ def get_parking_lots():
         lot_dict['number_of_spots'] = lot.number_of_spots
         lot_dict['available_spots'] = lot.available_spots
         parking_lots_json.append(lot_dict)
-    return jsonify(parking_lots_json)
+    return jsonify(parking_lots_json), 200
 
 @app.route("/api/lot/<int:lot_id>")
 def get_parking_lot(lot_id):
@@ -106,7 +143,7 @@ def get_parking_lot(lot_id):
         'number_of_spots': lot.number_of_spots,
         'available_spots': lot.available_spots
     }
-    return jsonify(lot_dict)
+    return jsonify(lot_dict), 200
 
 @app.route("/api/lots/<int:lot_id>/spots")
 def get_parking_spots(lot_id):
@@ -123,7 +160,7 @@ def get_parking_spots(lot_id):
             'status': spot.status
         }
         spots_json.append(spot_dict)
-    return jsonify(spots_json)
+    return jsonify(spots_json), 200
 
 
 @app.route("/api/reservations", methods=["POST"])
@@ -143,7 +180,7 @@ def create_reservation():
     spot.status = 'O'
     spot.lot.available_spots -= 1
     db.session.commit()
-    return jsonify("Reservation created successfully")
+    return jsonify("Reservation created successfully"), 201
 
 @app.route("/api/reservations")
 @jwt_required()
@@ -161,7 +198,7 @@ def get_reservations():
             'status': res.status
         }
         reservations_json.append(res_dict)
-    return jsonify(reservations_json)
+    return jsonify(reservations_json), 200
 
 @app.route("/api/reservations/<int:reservation_id>")
 @jwt_required()
@@ -175,7 +212,7 @@ def get_reservation(reservation_id):
         'parking_cost': reservation.parking_cost,
         'status': reservation.status
     }
-    return jsonify(reservation_dict)
+    return jsonify(reservation_dict), 200
 
 @app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
 @jwt_required()
@@ -191,7 +228,7 @@ def update_reservation(reservation_id):
         return jsonify(message="Invalid action"), 400
 
     db.session.commit()
-    return jsonify(message="Reservation updated successfully")
+    return jsonify(message="Reservation updated successfully"), 200
 
 @app.route("/api/reservations/<int:reservation_id>", methods=["DELETE"])
 @jwt_required()
@@ -199,7 +236,7 @@ def delete_reservation(reservation_id):
     reservation = Reservation.query.get_or_404(reservation_id)
     db.session.delete(reservation)
     db.session.commit()
-    return jsonify(message="Reservation canceled successfully")
+    return jsonify(message="Reservation canceled successfully"), 204
 
 
 # Admin Endpoints
@@ -208,7 +245,7 @@ def delete_reservation(reservation_id):
 @jwt_required()
 def admin_home():
     if current_user.role == "admin":
-        return "Welcome to the admin home page!"
+        return "Welcome to the admin home page!", 200
     else:
         return jsonify(message="Unauthorized"), 403
 
@@ -244,7 +281,7 @@ def update_parking_lot(lot_id):
     lot.available_spots = data.get("available_spots", lot.available_spots)
 
     db.session.commit()
-    return jsonify(message="Parking lot updated successfully")
+    return jsonify(message="Parking lot updated successfully"), 200
 
 @app.route("/api/lots/<int:lot_id>", methods=["DELETE"])
 @jwt_required()
@@ -255,7 +292,7 @@ def delete_parking_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
     db.session.delete(lot)
     db.session.commit()
-    return jsonify(message="Parking lot deleted successfully")
+    return jsonify(message="Parking lot deleted successfully"), 200
 
 @app.route("/api/spots/<int:spot_id>", methods=["PATCH"])
 @jwt_required()
@@ -270,7 +307,7 @@ def update_parking_spot(spot_id):
     spot.status = data.get("status", spot.status)
 
     db.session.commit()
-    return jsonify(message="Parking spot updated successfully")
+    return jsonify(message="Parking spot updated successfully"), 200
 
 @app.route("/api/users")
 @jwt_required()
@@ -286,7 +323,7 @@ def get_users():
         'role': user.role
     } for user in users]
 
-    return jsonify(users=user_list)
+    return jsonify(users=user_list), 200
 
 @app.route("/api/users/<int:user_id>")
 @jwt_required()
@@ -301,7 +338,7 @@ def get_user(user_id):
         'email': user.email,
         'role': user.role
     }
-    return jsonify(user=user_data)
+    return jsonify(user=user_data), 200
 
 @app.route("/api/users/<int:user_id>/reservations")
 @jwt_required()
@@ -318,7 +355,7 @@ def get_user_reservations(user_id):
         'status': reservation.status
     } for reservation in reservations]
 
-    return jsonify(reservations=reservation_list)
+    return jsonify(reservations=reservation_list), 200
 
 @app.route("/api/reservations")
 @jwt_required()
@@ -334,7 +371,7 @@ def get_reservations():
         'status': reservation.status
     } for reservation in reservations]
 
-    return jsonify(reservations=reservation_list)
+    return jsonify(reservations=reservation_list), 200
 
 @app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
 @jwt_required()
@@ -350,7 +387,7 @@ def update_reservation(reservation_id):
     reservation.status = data.get("status", reservation.status)
 
     db.session.commit()
-    return jsonify(message="Reservation updated successfully")
+    return jsonify(message="Reservation updated successfully"), 200
 
 @app.route("/api/reservations/<int:reservation_id>/invoice", methods=["POST"])
 @jwt_required()
@@ -368,4 +405,4 @@ def create_reservation_invoice(reservation_id):
         'amount': calculate_invoice_amount(reservation)
     }
 
-    return jsonify(invoice=invoice)
+    return jsonify(invoice=invoice), 200
