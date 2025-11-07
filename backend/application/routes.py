@@ -389,7 +389,7 @@ def update_reservation(reservation_id):
     db.session.commit()
     return jsonify(message="Reservation updated successfully"), 200
 
-@app.route("/api/reservations/<int:reservation_id>/invoice", methods=["POST"])
+@app.route("/api/reservations/<int:reservation_id>/invoice")
 @jwt_required()
 def create_reservation_invoice(reservation_id):
     if current_user.role != "admin":
