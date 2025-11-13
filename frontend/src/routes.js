@@ -86,6 +86,14 @@ async function checkAdmin() {
 router.beforeEach(async (to) => {
     const requiresAuth = to.matched.some(r => r.meta && r.meta.requiresAuth);
     const requiresAdmin = to.matched.some(r => r.meta && r.meta.role === 'admin');
+    if (to.path === '/') {
+        const token = localStorage.getItem('token');
+        if (token) {
+            const isAdmin = await checkAdmin();
+            return { path: isAdmin ? '/admin' : '/user' };
+        }
+        return true;
+    }
     if (!requiresAuth) return true;
     if (requiresAdmin) {
         const ok = await checkAdmin();

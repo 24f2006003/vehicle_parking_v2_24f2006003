@@ -20,10 +20,12 @@ const error = ref('')
 
 onMounted(async () => {
   const token = localStorage.getItem('token')
-  if (!token) { loading.value = false; error.value = 'Login as admin to view summary'; return }
+  if (!token) { loading.value = false; error.value = 'Please login'; return }
   try {
+    const adminCheck = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${token}` } })
+    if (!adminCheck.ok) { error.value = 'Login as admin to view summary'; return }
     const res = await fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) throw new Error()
+    if (!res.ok) { error.value = 'Could not load summary'; return }
     const d = await res.json()
     data.value = { total_users: d.total_users, total_reservations: d.total_reservations, total_parking_lots: d.total_parking_lots }
   } catch (e) {
