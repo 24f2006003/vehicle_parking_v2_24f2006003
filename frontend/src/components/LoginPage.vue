@@ -21,7 +21,17 @@ export default {
         }
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
-        this.$router.push('/');
+        // Detect role to route directly
+        try {
+          const adminCheck = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${data.access_token}` } })
+          if (adminCheck.ok) {
+            this.$router.push('/admin');
+          } else {
+            this.$router.push('/user');
+          }
+        } catch {
+          this.$router.push('/');
+        }
       } catch (e) {
         this.error = 'Network error';
       }

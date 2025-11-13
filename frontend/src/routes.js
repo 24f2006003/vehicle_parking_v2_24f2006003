@@ -30,6 +30,7 @@ const routes = [
     {
         path: '/admin',
         component: AdminDashboard,
+        meta: { requiresAuth: true, role: 'admin' },
         children: [
             { path: 'add-lot', component: AddParkingLot },
             { path: 'edit-lot/:id', component: EditParkingLot },
@@ -45,6 +46,7 @@ const routes = [
     {
         path: '/user',
         component: UserDashboard,
+        meta: { requiresAuth: true },
         children: [
             { path: 'book/:lot_id', component: BookSpot },
             { path: 'release/:spot_id', component: ReleaseSpot },
@@ -57,4 +59,40 @@ const routes = [
 export const router = createRouter({
     history: createWebHistory(),
     routes
+});
+
+async function checkAuth() {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    try {
+        const res = await fetch('/api/user_home', { headers: { Authorization: `Bearer ${token}` } });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+async function checkAdmin() {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    try {
+        const res = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${token}` } });
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
+router.beforeEach(async (to) => {
+    const requiresAuth = to.matched.some(r => r.meta && r.meta.requiresAuth);
+    const requiresAdmin = to.matched.some(r => r.meta && r.meta.role === 'admin');
+    if (!requiresAuth) return true;
+    if (requiresAdmin) {
+        const ok = await checkAdmin();
+        if (!ok) return { path: '/login', query: { next: to.fullPath } };
+        return true;
+    }
+    const ok = await checkAuth();
+    if (!ok) return { path: '/login', query: { next: to.fullPath } };
+    return true;
 });
