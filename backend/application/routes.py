@@ -58,11 +58,15 @@ def dashboard():
         total_users = len(users)
         parking_spots_json = []
         for lot in parking_lots:
-            spots_dict = {}
-            spots_dict['id'] = lot.id
-            spots_dict['total_spots'] = lot.number_of_spots
-            spots_dict['available_spots'] = lot.available_spots
-            spots_dict['occupied_spots'] = lot.occupied_spots
+            total = len(lot.spots)
+            available = sum(1 for s in lot.spots if s.status == 'A')
+            occupied = total - available
+            spots_dict = {
+                'id': lot.id,
+                'total_spots': total or lot.number_of_spots,
+                'available_spots': available,
+                'occupied_spots': occupied
+            }
             parking_spots_json.append(spots_dict)
 
         return jsonify(
@@ -120,28 +124,33 @@ def get_parking_lots():
     parking_lots = ParkingLot.query.all()
     parking_lots_json = []
     for lot in parking_lots:
-        lot_dict = {}
-        lot_dict['lot_id'] = lot.id
-        lot_dict['prime_location_name'] = lot.prime_location_name
-        lot_dict['price'] = lot.price
-        lot_dict['address'] = lot.address
-        lot_dict['pin_code'] = lot.pin_code
-        lot_dict['number_of_spots'] = lot.number_of_spots
-        lot_dict['available_spots'] = lot.available_spots
+        total = len(lot.spots) or lot.number_of_spots
+        available = sum(1 for s in lot.spots if s.status == 'A')
+        lot_dict = {
+            'lot_id': lot.id,
+            'prime_location_name': lot.prime_location_name,
+            'price': lot.price,
+            'address': lot.address,
+            'pin_code': lot.pin_code,
+            'number_of_spots': total,
+            'available_spots': available
+        }
         parking_lots_json.append(lot_dict)
     return jsonify(parking_lots_json), 200
 
 @app.route("/api/lot/<int:lot_id>")
 def get_parking_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
+    total = len(lot.spots) or lot.number_of_spots
+    available = sum(1 for s in lot.spots if s.status == 'A')
     lot_dict = {
         'lot_id': lot.id,
         'prime_location_name': lot.prime_location_name,
         'price': lot.price,
         'address': lot.address,
         'pin_code': lot.pin_code,
-        'number_of_spots': lot.number_of_spots,
-        'available_spots': lot.available_spots
+        'number_of_spots': total,
+        'available_spots': available
     }
     return jsonify(lot_dict), 200
 
@@ -178,7 +187,8 @@ def create_reservation():
     reservation = Reservation(spot_id=spot_id, user_id=current_user.id, parking_timestamp=parking_timestamp, leaving_timestamp=leaving_timestamp, parking_cost=parking_cost)
     db.session.add(reservation)
     spot.status = 'O'
-    spot.lot.available_spots -= 1
+    # Recalculate available spots for the lot
+    spot.lot.available_spots = sum(1 for s in spot.lot.spots if s.status == 'A')
     db.session.commit()
     return jsonify("Reservation created successfully"), 201
 
@@ -247,8 +257,12 @@ def update_reservation(reservation_id):\
     action = data.get("action")
     if action == "leave":
         reservation.status = "L"
+        reservation.spot.status = 'A'
+        reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
     elif action == "complete":
         reservation.status = "C"
+        reservation.spot.status = 'A'
+        reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
     else:
         return jsonify(message="Invalid action"), 400
 
@@ -259,6 +273,11 @@ def update_reservation(reservation_id):\
 @jwt_required()
 def delete_reservation(reservation_id):
     reservation = Reservation.query.get_or_404(reservation_id)
+    try:
+        reservation.spot.status = 'A'
+        reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
+    except Exception:
+        pass
     db.session.delete(reservation)
     db.session.commit()
     return jsonify(message="Reservation canceled successfully"), 204

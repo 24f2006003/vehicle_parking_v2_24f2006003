@@ -38,8 +38,8 @@
           <td>{{ lot.number_of_spots }}</td>
           <td>{{ lot.available_spots }}</td>
           <td>
-            <router-link :to="`/admin/edit-lot/${lot.lot_id}`">Edit</router-link>
-            <router-link :to="`/admin/add-spots/${lot.lot_id}`">Add Spots</router-link>
+            <router-link class="btn btn-sm btn-outline-primary me-2" :to="`/admin/edit-lot/${lot.lot_id}`">Edit</router-link>
+            <router-link class="btn btn-sm btn-outline-secondary" :to="`/admin/add-spots/${lot.lot_id}`">Add Spots</router-link>
           </td>
         </tr>
       </tbody>

@@ -1,20 +1,27 @@
 <template>
-    <header class="nav">
-        <div class="brand">
-            <a href="#" @click.prevent="goHome">Vehicle Parking</a>
+    <header class="navbar navbar-expand bg-light px-3">
+        <a href="#" class="navbar-brand" @click.prevent="goHome">Vehicle Parking</a>
+        <div class="ms-auto">
+            <ul class="navbar-nav align-items-center">
+                <li class="nav-item">
+                    <a href="#" class="nav-link" @click.prevent="goHome">Home</a>
+                </li>
+                <template v-if="!isLoggedIn">
+                    <li class="nav-item">
+                        <router-link class="nav-link" to="/login">Login</router-link>
+                    </li>
+                    <li class="nav-item">
+                        <router-link class="nav-link" to="/register">Register</router-link>
+                    </li>
+                </template>
+                <template v-else>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" @click.prevent="logout">Logout</a>
+                    </li>
+                </template>
+            </ul>
         </div>
-        <nav class="links">
-            <a href="#" @click.prevent="goHome">Home</a>
-            <template v-if="!isLoggedIn">
-                <router-link to="/login">Login</router-link>
-                <router-link to="/register">Register</router-link>
-            </template>
-            <template v-else>
-                <a href="#" @click.prevent="logout">Logout</a>
-            </template>
-        </nav>
     </header>
-  
 </template>
 
 <script setup>
@@ -62,8 +69,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem 1rem; }
-.brand a { font-weight: 700; text-decoration: none; }
-.links { display: flex; gap: 0.5rem; }
-.links a { text-decoration: none; padding: 0.25rem 0.5rem; }
+
 </style>
