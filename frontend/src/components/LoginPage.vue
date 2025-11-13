@@ -1,110 +1,61 @@
 <script>
 export default {
-  data(){
-    return{
-      formData{
-        email: "",
-        password: ""
-      }
+  data() {
+    return {
+      formData: { email: "", password: "" },
+      error: ""
     }
-  }
-  methods:{
-    loginUser(event){
-      event.preventDefault()
-      console.log(`Username: ${this.formData.username}, Password: ${this.formData.password}`)
+  },
+  methods: {
+    async loginUser() {
+      this.error = "";
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.formData)
+        });
+        if (!res.ok) {
+          this.error = 'Login failed';
+          return;
+        }
+        const data = await res.json();
+        localStorage.setItem('token', data.access_token);
+        this.$router.push('/');
+      } catch (e) {
+        this.error = 'Network error';
+      }
     }
   }
 }
 </script>
 
 <template>
-    <div id="main">
-            <div id="canvas" class="overflow-auto">
-                <div id="form-body">
-                    <h1>Welcome to Vehicle Parking</h1>
-                    <h2>Login Form</h2>
-                    <form @submit="loginUser">
-                        <div class="mb-3">
-                            <label for="Input1"
-                                class="form-label">Registered Email ID</label>
-                            <input type="text" class="form-control"
-                                id="Input1"
-                                placeholder="Enter email id" v-model="formData.email">
-                        </div>
-                        <div class="mb-3">
-                            <label for="Input2"
-                                class="form-label">Password</label>
-                            <input type="password" class="form-control"
-                                id="Input2"
-                                placeholder="Enter password" v-model="formData.password">
-                        </div>
-                        <div style="text-align: center;">
-                            <input type="submit"
-                                class="btn btn-primary" value="Login"><br>
-                            Are you a new user? <a href="/register">Register</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <div class="login-page">
+    <section>
+      <h1>Login</h1>
+      <form @submit.prevent="loginUser" class="simple-form">
+        <label>
+          Email
+          <input type="email" v-model="formData.email" required />
+        </label>
+        <label>
+          Password
+          <input type="password" v-model="formData.password" required />
+        </label>
+        <div class="actions">
+          <button type="submit">Login</button>
+          <router-link to="/register">Register</router-link>
         </div>
+        <p v-if="error">{{ error }}</p>
+      </form>
+    </section>
+  </div>
 </template>
 
-<style>
-#canvas {
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  padding: 40px;
-  min-width: 600px;
-  height: 550px;
-}
-
-#form-body {
-  text-align: center;
-  height: 450px;
-  margin-top: 10px;
-}
-
-h1 {
-  color: #333;
-  margin-bottom: 10px;
-  font-size: 28px;
-}
-
-h2 {
-  color: #666;
-  margin-bottom: 30px;
-  font-size: 20px;
-}
-
-.form-control {
-  margin-bottom: 15px;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  width: 100%;
-}
-
-.btn-primary {
-  background: #007bff;
-  border: none;
-  padding: 12px 30px;
-  border-radius: 5px;
-  color: white;
-  cursor: pointer;
-  margin-bottom: 15px;
-}
-
-.btn-primary:hover {
-  background: #0056b3;
-}
-
-a {
-  color: #007bff;
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
+<style scoped>
+.login-page { padding: 1rem; }
+.simple-form { display: flex; flex-direction: column; gap: 0.75rem; max-width: 600px; }
+label { display: flex; flex-direction: column; gap: 0.25rem; }
+.actions { display: flex; gap: 0.75rem; align-items: center; }
 </style>

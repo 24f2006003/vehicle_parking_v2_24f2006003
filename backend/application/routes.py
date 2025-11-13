@@ -22,10 +22,10 @@ def role_required(required_role):
 
 @app.route("/api/login", methods=["POST"])
 def login():
-    username = request.json.get("username", None)
-    password = request.json.get("password", None)
+    email = request.json.get("email")
+    password = request.json.get("password")
 
-    user = User.query.filter_by(username=username).one_or_none()
+    user = User.query.filter_by(email=email).one_or_none()
     if not user or not user.password == password:
         return jsonify("Wrong username or password"), 401
 
@@ -184,7 +184,7 @@ def create_reservation():
 
 @app.route("/api/reservations")
 @jwt_required()
-def get_reservations():
+def get_my_reservations():
     user = User.query.get(current_user.id)
     reservations = Reservation.query.filter_by(user_id=user.id).all()
     reservations_json = []
@@ -216,10 +216,35 @@ def get_reservation(reservation_id):
 
 @app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
 @jwt_required()
-def update_reservation(reservation_id):
-    reservation = Reservation.query.get_or_404(reservation_id)
-    action = request.json.get("action", None)
+def update_reservation(reservation_id):\
+    # - Users: allowed actions via { action: "leave"|"complete" } only on their own reservations.
+    # - Admins: can update fields: spot_id, status, parking_timestamp, leaving_timestamp, parking_cost.
 
+    reservation = Reservation.query.get_or_404(reservation_id)
+    data = request.json or {}
+
+    if current_user.role == "admin":
+        # Admin can update full details (validate spot if provided)
+        new_spot_id = data.get("spot_id")
+        if new_spot_id is not None:
+            spot = ParkingSpot.query.get_or_404(new_spot_id)
+            reservation.spot_id = spot.id
+        if "status" in data:
+            reservation.status = data.get("status", reservation.status)
+        if "parking_timestamp" in data:
+            reservation.parking_timestamp = data.get("parking_timestamp", reservation.parking_timestamp)
+        if "leaving_timestamp" in data:
+            reservation.leaving_timestamp = data.get("leaving_timestamp", reservation.leaving_timestamp)
+        if "parking_cost" in data:
+            reservation.parking_cost = data.get("parking_cost", reservation.parking_cost)
+        db.session.commit()
+        return jsonify(message="Reservation updated successfully"), 200
+
+    # User path: can only act on own reservation
+    if reservation.user_id != current_user.id:
+        return jsonify(message="Unauthorized"), 403
+
+    action = data.get("action")
     if action == "leave":
         reservation.status = "L"
     elif action == "complete":
@@ -350,7 +375,7 @@ def get_user_reservations(user_id):
     reservations = Reservation.query.filter_by(user_id=user.id).all()
     reservation_list = [{
         'id': reservation.id,
-        'lot_id': reservation.lot_id,
+        'lot_id': reservation.spot.lot_id,
         'spot_id': reservation.spot_id,
         'status': reservation.status
     } for reservation in reservations]
@@ -366,28 +391,12 @@ def get_reservations():
     reservations = Reservation.query.all()
     reservation_list = [{
         'id': reservation.id,
-        'lot_id': reservation.lot_id,
+        'lot_id': reservation.spot.lot_id,
         'spot_id': reservation.spot_id,
         'status': reservation.status
     } for reservation in reservations]
 
     return jsonify(reservations=reservation_list), 200
-
-@app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
-@jwt_required()
-def update_reservation(reservation_id):
-    if current_user.role != "admin":
-        return jsonify(message="Unauthorized"), 403
-
-    reservation = Reservation.query.get_or_404(reservation_id)
-    data = request.json
-
-    reservation.lot_id = data.get("lot_id", reservation.lot_id)
-    reservation.spot_id = data.get("spot_id", reservation.spot_id)
-    reservation.status = data.get("status", reservation.status)
-
-    db.session.commit()
-    return jsonify(message="Reservation updated successfully"), 200
 
 @app.route("/api/reservations/<int:reservation_id>/invoice")
 @jwt_required()
@@ -399,7 +408,7 @@ def create_reservation_invoice(reservation_id):
 
     invoice = {
         'id': reservation.id,
-        'lot_id': reservation.lot_id,
+        'lot_id': reservation.spot.lot_id,
         'spot_id': reservation.spot_id,
         'status': reservation.status,
         'amount': calculate_invoice_amount(reservation)
