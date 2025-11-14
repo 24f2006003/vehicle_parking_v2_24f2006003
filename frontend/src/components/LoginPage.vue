@@ -1,4 +1,5 @@
 <script>
+import api from '../api'
 export default {
   data() {
     return {
@@ -10,30 +11,16 @@ export default {
     async loginUser() {
       this.error = "";
       try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.formData)
-        });
-        if (!res.ok) {
-          this.error = 'Login failed';
-          return;
-        }
-        const data = await res.json();
-        localStorage.setItem('token', data.access_token);
-        // Detect role to route directly
+        const { data } = await api.post('/api/login', this.formData)
+        localStorage.setItem('token', data.access_token)
         try {
-          const adminCheck = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${data.access_token}` } })
-          if (adminCheck.ok) {
-            this.$router.push('/admin');
-          } else {
-            this.$router.push('/user');
-          }
+          await api.get('/api/admin_home')
+          this.$router.push('/admin')
         } catch {
-          this.$router.push('/');
+          this.$router.push('/user')
         }
       } catch (e) {
-        this.error = 'Network error';
+        this.error = 'Login failed'
       }
     }
   }
@@ -41,31 +28,26 @@ export default {
 </script>
 
 <template>
-  <div class="login-page">
-    <section>
-      <h1>Login</h1>
-      <form @submit.prevent="loginUser" class="simple-form">
-        <label>
-          Email
-          <input type="email" v-model="formData.email" required />
-        </label>
-        <label>
-          Password
-          <input type="password" v-model="formData.password" required />
-        </label>
-        <div class="actions">
-          <button type="submit">Login</button>
-          <router-link to="/register">Register</router-link>
-        </div>
-        <p v-if="error">{{ error }}</p>
-      </form>
-    </section>
+  <div class="container py-3">
+    <h1 class="mb-3">Login</h1>
+    <form @submit.prevent="loginUser" class="row g-3" style="max-width: 640px;">
+      <div class="col-12">
+        <label class="form-label">Email</label>
+        <input type="email" v-model="formData.email" required class="form-control" />
+      </div>
+      <div class="col-12">
+        <label class="form-label">Password</label>
+        <input type="password" v-model="formData.password" required class="form-control" />
+      </div>
+      <div class="col-12 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary">Login</button>
+        <router-link to="/register" class="btn btn-outline-secondary">Register</router-link>
+      </div>
+      <p v-if="error" class="text-danger mt-2 mb-0">{{ error }}</p>
+    </form>
   </div>
 </template>
 
 <style scoped>
-.login-page { padding: 1rem; }
-.simple-form { display: flex; flex-direction: column; gap: 0.75rem; max-width: 600px; }
-label { display: flex; flex-direction: column; gap: 0.25rem; }
-.actions { display: flex; gap: 0.75rem; align-items: center; }
+
 </style>

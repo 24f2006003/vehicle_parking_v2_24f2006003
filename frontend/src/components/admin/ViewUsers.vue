@@ -29,6 +29,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../../api'
 
 const users = ref([])
 const loading = ref(true)
@@ -36,12 +37,10 @@ const error = ref('')
 
 onMounted(async () => {
   const token = localStorage.getItem('token')
-  if (!token) { loading.value = false; error.value = 'Login as admin to view users'; return }
+  if (!token) { loading.value = false; error.value = 'Please login'; return }
   try {
-    const res = await fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) throw new Error()
-    const data = await res.json()
-    users.value = data.users || []
+    const { data } = await api.get('/api/users')
+    users.value = data
   } catch (e) {
     error.value = 'Could not load users'
   } finally {
@@ -49,8 +48,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-th, td { border: 1px solid; padding: 0.5rem; text-align: left; }
-</style>

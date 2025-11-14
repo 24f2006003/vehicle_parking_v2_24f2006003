@@ -1,37 +1,36 @@
 <template>
-  <div>
-    <h2>Occupied Spots</h2>
-    <div>
-      <label>
-        Select Lot
-        <select v-model.number="selectedLot" @change="loadSpots">
-          <option disabled :value="0">Choose a lot</option>
-          <option v-for="lot in lots" :key="lot.lot_id" :value="lot.lot_id">{{ lot.prime_location_name }}</option>
-        </select>
-      </label>
-    </div>
+  <script setup>
+  import { ref, onMounted, watch } from 'vue'
+  import api from '../../api'
 
-    <p v-if="loading">Loading...</p>
-    <p v-if="error">{{ error }}</p>
+  const lots = ref([])
+  const selectedLot = ref('')
+  const spots = ref([])
+  const loading = ref(true)
+  const error = ref('')
 
-    <table v-if="!loading && !error && spots.length">
-      <thead>
-        <tr>
-          <th>Spot</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="s in spots" :key="s.spot_id">
-          <td>{{ s.spot_id }}</td>
-          <td>{{ s.status }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</template>
+  onMounted(async () => {
+    try {
+      const { data } = await api.get('/api/lots')
+      lots.value = data
+    } catch (e) {
+      error.value = 'Could not load lots'
+    } finally {
+      loading.value = false
+    }
+  })
 
-<script setup>
+  watch(selectedLot, async (v) => {
+    spots.value = []
+    if (!v) return
+    try {
+      const { data } = await api.get(`/api/lots/${selectedLot.value}/spots`, { params: { status: 'O' } })
+      spots.value = data
+    } catch (e) {
+      error.value = 'Could not load spots'
+    }
+  })
+  </script>
 import { ref, onMounted } from 'vue'
 
 const lots = ref([])

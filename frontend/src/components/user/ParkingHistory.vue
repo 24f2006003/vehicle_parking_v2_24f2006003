@@ -35,6 +35,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../../api'
 
 const history = ref([])
 const loading = ref(true)
@@ -42,11 +43,10 @@ const error = ref('')
 
 onMounted(async () => {
   const token = localStorage.getItem('token')
-  if (!token) { loading.value = false; return }
+  if (!token) { loading.value = false; error.value = 'Please login'; return }
   try {
-    const res = await fetch('/api/reservations', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) throw new Error()
-    history.value = await res.json()
+    const { data } = await api.get('/api/reservations')
+    history.value = data
   } catch (e) {
     error.value = 'Could not load history'
   } finally {
@@ -54,9 +54,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-.parking-history { display: flex; flex-direction: column; gap: 1rem; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid; padding: 0.5rem; text-align: left; }
-</style>

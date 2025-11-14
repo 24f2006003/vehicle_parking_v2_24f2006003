@@ -14,6 +14,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../api'
 
 const lots = ref([])
 const loading = ref(true)
@@ -21,9 +22,8 @@ const error = ref('')
 
 onMounted(async () => {
     try {
-        const res = await fetch('/api/lots')
-        if (!res.ok) throw new Error('Failed to load lots')
-        lots.value = await res.json()
+        const { data } = await api.get('/api/lots')
+        lots.value = data
     } catch (e) {
         error.value = 'Could not load lots'
     } finally {

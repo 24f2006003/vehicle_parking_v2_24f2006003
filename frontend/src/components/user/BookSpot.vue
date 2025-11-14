@@ -4,39 +4,38 @@
     <p>Reserve a parking spot for your upcoming visit.</p>
 
     <form @submit.prevent="submitReservation">
-      <label>
-        Lot
-        <select v-model="form.lotId">
-          <option disabled value="">Select lot</option>
-          <option v-for="lot in lots" :key="lot.lot_id" :value="lot.lot_id">{{ lot.prime_location_name }}</option>
-        </select>
-      </label>
+      <script setup>
+      import { ref, onMounted, watch } from 'vue'
+      import api from '../../api'
 
-      <label>
-        Spot Number
-        <input v-model="form.spotId" placeholder="Eg. C-12" required />
-      </label>
+      const lots = ref([])
+      const spots = ref([])
+      const selectedLot = ref('')
+      const loading = ref(true)
+      const error = ref('')
 
-      <label>
-        Vehicle Number
-        <input v-model="form.vehicleNumber" placeholder="TN-00-AA-0000" required />
-      </label>
+      onMounted(async () => {
+        try {
+          const { data } = await api.get('/api/lots')
+          lots.value = data
+        } catch (e) {
+          error.value = 'Could not load lots'
+        } finally {
+          loading.value = false
+        }
+      })
 
-      <div class="row">
-        <label>
-          Parking From
-          <input v-model="form.from" type="datetime-local" required />
-        </label>
-        <label>
-          Parking To
-          <input v-model="form.to" type="datetime-local" required />
-        </label>
-      </div>
-
-      <button type="submit">Reserve</button>
-    </form>
-  </div>
-</template>
+      watch(selectedLot, async (v) => {
+        spots.value = []
+        if (!v) return
+        try {
+          const { data } = await api.get(`/api/lots/${selectedLot.value}/spots`)
+          spots.value = data
+        } catch (e) {
+          error.value = 'Could not load spots'
+        }
+      })
+      </script>
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'

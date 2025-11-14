@@ -1,3 +1,4 @@
+import api from './api'
 import { createWebHistory, createRouter } from "vue-router";
 
 import Content from './components/Content.vue';
@@ -65,8 +66,8 @@ async function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token) return false;
     try {
-        const res = await fetch('/api/user_home', { headers: { Authorization: `Bearer ${token}` } });
-        return res.ok;
+        await api.get('/api/user_home');
+        return true;
     } catch {
         return false;
     }
@@ -76,8 +77,8 @@ async function checkAdmin() {
     const token = localStorage.getItem('token');
     if (!token) return false;
     try {
-        const res = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${token}` } });
-        return res.ok;
+        await api.get('/api/admin_home');
+        return true;
     } catch {
         return false;
     }

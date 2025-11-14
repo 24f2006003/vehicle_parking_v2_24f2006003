@@ -1,32 +1,23 @@
 <template>
-    <header class="navbar navbar-expand bg-light px-3">
+    <nav class="navbar navbar-expand bg-light px-3">
         <a href="#" class="navbar-brand" @click.prevent="goHome">Vehicle Parking</a>
-        <div class="ms-auto">
-            <ul class="navbar-nav align-items-center">
-                <li class="nav-item">
-                    <a href="#" class="nav-link" @click.prevent="goHome">Home</a>
-                </li>
-                <template v-if="!isLoggedIn">
-                    <li class="nav-item">
-                        <router-link class="nav-link" to="/login">Login</router-link>
-                    </li>
-                    <li class="nav-item">
-                        <router-link class="nav-link" to="/register">Register</router-link>
-                    </li>
-                </template>
-                <template v-else>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link" @click.prevent="logout">Logout</a>
-                    </li>
-                </template>
-            </ul>
+        <div class="ms-auto d-flex align-items-center gap-2">
+            <a href="#" class="btn btn-sm btn-outline-secondary" @click.prevent="goHome">Home</a>
+            <template v-if="!isLoggedIn">
+                <router-link class="btn btn-sm btn-primary" to="/login">Login</router-link>
+                <router-link class="btn btn-sm btn-outline-secondary" to="/register">Register</router-link>
+            </template>
+            <template v-else>
+                <button class="btn btn-sm btn-danger" @click="logout">Logout</button>
+            </template>
         </div>
-    </header>
+    </nav>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '../api'
 
 const router = useRouter()
 const isLoggedIn = ref(false)
@@ -41,8 +32,8 @@ async function detectRole() {
     const token = localStorage.getItem('token')
     if (!token) { isAdmin.value = false; return }
     try {
-        const res = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${token}` } })
-        isAdmin.value = res.ok
+        await api.get('/api/admin_home')
+        isAdmin.value = true
     } catch {
         isAdmin.value = false
     }

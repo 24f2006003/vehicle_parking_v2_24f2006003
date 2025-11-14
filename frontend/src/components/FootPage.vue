@@ -1,17 +1,14 @@
 <template>
-    <footer class="footer">
-        <p>
-            © 2025 Vehicle Parking System ·
-            <router-link to="/">Home</router-link>
-        </p>
+    <footer class="bg-light text-center py-3 mt-4">
+        <div class="container">
+            <small>© 2025 Vehicle Parking System · <router-link to="/">Home</router-link></small>
+        </div>
     </footer>
-  
 </template>
 
 <script setup>
 </script>
 
 <style scoped>
-.footer { margin-top: 2rem; padding: 1rem; text-align: center; }
-a { text-decoration: none; }
+
 </style>

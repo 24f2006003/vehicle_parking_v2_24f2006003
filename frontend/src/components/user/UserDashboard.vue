@@ -30,24 +30,24 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../../api'
 
 const current = ref(null)
+const reservations = ref([])
+const loading = ref(true)
+const error = ref('')
 
 onMounted(async () => {
   const token = localStorage.getItem('token')
-  if (!token) return
+  if (!token) { loading.value = false; error.value = 'Please login'; return }
   try {
-    const res = await fetch('/api/reservations', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) return
-    const items = await res.json()
-    current.value = Array.isArray(items) ? items.find(r => r.status === 'active') || items[0] : null
-  } catch {}
+    const { data } = await api.get('/api/reservations')
+    reservations.value = data
+    current.value = Array.isArray(data) ? data.find(r => r.status === 'active') || data[0] : null
+  } catch (e) {
+    error.value = 'Could not load reservations'
+  } finally {
+    loading.value = false
+  }
 })
 </script>
-
-<style scoped>
-.user-dashboard { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; }
-.panel { padding: 1rem; border: 1px solid; }
-nav { display: flex; gap: 0.5rem; }
-.content { min-height: 200px; }
-</style>

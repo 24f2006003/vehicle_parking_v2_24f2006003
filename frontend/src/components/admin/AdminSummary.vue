@@ -13,6 +13,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '../../api'
 
 const data = ref({ total_users: 0, total_reservations: 0, total_parking_lots: 0 })
 const loading = ref(true)
@@ -22,11 +23,8 @@ onMounted(async () => {
   const token = localStorage.getItem('token')
   if (!token) { loading.value = false; error.value = 'Please login'; return }
   try {
-    const adminCheck = await fetch('/api/admin_home', { headers: { Authorization: `Bearer ${token}` } })
-    if (!adminCheck.ok) { error.value = 'Login as admin to view summary'; return }
-    const res = await fetch('/api/dashboard', { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) { error.value = 'Could not load summary'; return }
-    const d = await res.json()
+    await api.get('/api/admin_home')
+    const { data: d } = await api.get('/api/dashboard')
     data.value = { total_users: d.total_users, total_reservations: d.total_reservations, total_parking_lots: d.total_parking_lots }
   } catch (e) {
     error.value = 'Could not load summary'

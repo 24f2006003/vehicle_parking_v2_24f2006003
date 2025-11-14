@@ -1,43 +1,36 @@
 <template>
-	<div class="register-page">
-		<section>
-			<h1>Create Account</h1>
-			<p class="sub">Register to book and manage parking spots.</p>
+  <div class="container py-3">
+    <h1 class="mb-2">Create Account</h1>
+    <p class="text-muted">Register to book and manage parking spots.</p>
 
-			<form @submit.prevent="onSubmit" class="simple-form">
-				<label>
-					Username
-					<input v-model.trim="form.username" placeholder="e.g. arnav_01" required />
-				</label>
-
-				<label>
-					Email
-					<input v-model.trim="form.email" type="email" placeholder="you@example.com" required />
-				</label>
-
-				<div class="row">
-					<label>
-						Password
-						<input v-model="form.password" type="password" required />
-					</label>
-					<label>
-						Confirm Password
-						<input v-model="form.confirm" type="password" required />
-					</label>
-				</div>
-
-				<div class="actions">
-					<button type="submit">Register</button>
-					<router-link to="/login">Have an account? Login</router-link>
-				</div>
-			</form>
-		</section>
-	</div>
-  
+    <form @submit.prevent="onSubmit" class="row g-3" style="max-width: 720px;">
+      <div class="col-12">
+        <label class="form-label">Username</label>
+        <input v-model.trim="form.username" class="form-control" placeholder="e.g. arnav_01" required />
+      </div>
+      <div class="col-12">
+        <label class="form-label">Email</label>
+        <input v-model.trim="form.email" type="email" class="form-control" placeholder="you@example.com" required />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Password</label>
+        <input v-model="form.password" type="password" class="form-control" required />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Confirm Password</label>
+        <input v-model="form.confirm" type="password" class="form-control" required />
+      </div>
+      <div class="col-12 d-flex align-items-center gap-2">
+        <button type="submit" class="btn btn-primary">Register</button>
+        <router-link to="/login" class="btn btn-outline-secondary">Have an account? Login</router-link>
+      </div>
+    </form>
+  </div>
 </template>
 
 <script setup>
 import { reactive } from 'vue'
+import api from '../api'
 
 const form = reactive({ username: '', email: '', password: '', confirm: '' })
 
@@ -47,28 +40,15 @@ async function onSubmit() {
 		return
 	}
 	try {
-		const res = await fetch('/api/register', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username: form.username, email: form.email, password: form.password })
-		})
-		if (!res.ok) {
-			alert('Registration failed')
-			return
-		}
+		await api.post('/api/register', { username: form.username, email: form.email, password: form.password })
 		alert('Registered successfully')
 		window.location.href = '/login'
 	} catch (e) {
-		alert('Network error')
+		alert('Registration failed')
 	}
 }
 </script>
 
 <style scoped>
-.register-page { padding: 1rem; }
-.simple-form { display: flex; flex-direction: column; gap: 0.75rem; max-width: 600px; }
-label { display: flex; flex-direction: column; gap: 0.25rem; }
-.row { display: flex; gap: 0.75rem; }
-.row label { flex: 1; }
-.actions { display: flex; gap: 0.75rem; align-items: center; }
+
 </style>
