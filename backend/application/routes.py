@@ -435,9 +435,37 @@ def create_reservation_invoice(reservation_id):
 
     return jsonify(invoice=invoice), 200
 
+
+# Backend Jobs Triggers
+
 @app.route("/api/export_csv", methods=["POST"])
 @jwt_required()
 def trigger_export_csv():
     from application.tasks import export_csv
     export_csv.delay(current_user.id)
     return jsonify(message="CSV export started. You will receive an email when it is ready."), 202
+
+@app.route("/api/daily_reminder", methods=["POST"])
+@jwt_required()
+def trigger_daily_reminder():
+    from application.tasks import daily_reminder
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+    daily_reminder.delay()
+    return jsonify(message="Daily reminder job started."), 202
+
+@app.route("/api/monthly_report", methods=["POST"])
+@jwt_required()
+def trigger_monthly_report():
+    from application.tasks import monthly_report
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+    monthly_report.delay()
+    return jsonify(message="Monthly report job started."), 202
+
+@app.route('/api/send_mail')
+def send_mail():
+    res = monthly_report().delay()
+    return{
+        "message": res.result
+    }
