@@ -4,6 +4,8 @@ from application.database import db
 from application.models import User, ParkingLot, ParkingSpot
 from application.security import jwt
 from flask_cors import CORS
+from application.celery_init import celery_init_app
+from celery.schedules import crontab
 
 app = None
 
@@ -44,6 +46,27 @@ def create_app():
     return app
 
 app = create_app()
+celery = celery_init_app(app)
+celery.autodiscover_tasks()
+
+@celery.on_after_finalize.connect 
+def setup_periodic_tasks(sender, **kwargs):
+    from application.tasks import daily_reminder, monthly_report
+    
+    # Daily reminder at 6 PM
+    sender.add_periodic_task(
+        crontab(hour=18, minute=0),
+        daily_reminder.s(),
+        name='daily-reminder'
+    )
+    
+    # Monthly report on the 1st of every month at midnight
+    sender.add_periodic_task(
+        crontab(day_of_month=1, hour=0, minute=0),
+        monthly_report.s(),
+        name='monthly-report'
+    )
+
 
 from application.routes import *
 

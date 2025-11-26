@@ -1,35 +1,46 @@
 <template>
-  <div class="parking-history">
-    <h3>Parking History</h3>
-    <p>Past reservations with status and billing.</p>
+  <div class="container">
+    <h3 class="mb-4 border-start border-4 border-primary ps-2">Parking History</h3>
 
-    <p v-if="loading">Loading...</p>
-    <p v-if="error">{{ error }}</p>
+    <div v-if="loading" class="text-center py-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    <div v-if="error" class="alert alert-danger">{{ error }}</div>
 
-    <table v-if="!loading && !error">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Lot</th>
-          <th>Spot</th>
-          <th>From</th>
-          <th>To</th>
-          <th>Status</th>
-          <th>Amount (₹)</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in history" :key="item.reservation_id">
-          <td>{{ item.reservation_id }}</td>
-          <td>{{ item.lot_id || '-' }}</td>
-          <td>{{ item.spot_id }}</td>
-          <td>{{ item.parking_timestamp }}</td>
-          <td>{{ item.leaving_timestamp }}</td>
-          <td>{{ item.status }}</td>
-          <td>{{ item.parking_cost }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div v-if="!loading && !error" class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Lot</th>
+                <th>Spot</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Status</th>
+                <th>Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in history" :key="item.reservation_id">
+                <td>{{ item.reservation_id }}</td>
+                <td>{{ item.lot_id || '-' }}</td>
+                <td>{{ item.spot_id }}</td>
+                <td>{{ new Date(item.parking_timestamp).toLocaleString() }}</td>
+                <td>{{ item.leaving_timestamp ? new Date(item.leaving_timestamp).toLocaleString() : '-' }}</td>
+                <td>
+                  <span class="badge" :class="getStatusClass(item.status)">{{ item.status }}</span>
+                </td>
+                <td>{{ item.parking_cost }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -53,4 +64,13 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function getStatusClass(status) {
+  switch (status) {
+    case 'active': return 'bg-success';
+    case 'completed': return 'bg-secondary';
+    case 'cancelled': return 'bg-danger';
+    default: return 'bg-info';
+  }
+}
 </script>

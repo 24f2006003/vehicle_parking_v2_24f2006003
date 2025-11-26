@@ -226,7 +226,7 @@ def get_reservation(reservation_id):
 
 @app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
 @jwt_required()
-def update_reservation(reservation_id):\
+def update_reservation(reservation_id):
     # - Users: allowed actions via { action: "leave"|"complete" } only on their own reservations.
     # - Admins: can update fields: spot_id, status, parking_timestamp, leaving_timestamp, parking_cost.
 
@@ -434,3 +434,10 @@ def create_reservation_invoice(reservation_id):
     }
 
     return jsonify(invoice=invoice), 200
+
+@app.route("/api/export_csv", methods=["POST"])
+@jwt_required()
+def trigger_export_csv():
+    from application.tasks import export_csv
+    export_csv.delay(current_user.id)
+    return jsonify(message="CSV export started. You will receive an email when it is ready."), 202

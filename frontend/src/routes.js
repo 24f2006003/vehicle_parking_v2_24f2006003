@@ -33,13 +33,15 @@ const routes = [
         component: AdminDashboard,
         meta: { requiresAuth: true, role: 'admin' },
         children: [
+            { path: '', redirect: '/admin/view' },
+            { path: 'view', component: ViewParkingLots },
+            { path: 'users', component: ViewUsers },
+            { path: 'search', component: () => import('./components/admin/AdminSearch.vue') },
+            { path: 'summary', component: AdminSummary },
             { path: 'add-lot', component: AddParkingLot },
             { path: 'edit-lot/:id', component: EditParkingLot },
             { path: 'add-spots/:lot_id', component: AddSpots },
-            { path: 'view-lots', component: ViewParkingLots },
-            { path: 'users', component: ViewUsers },
-            { path: 'occupied', component: ViewOccupiedSpots },
-            { path: 'summary', component: AdminSummary }
+            { path: 'occupied', component: ViewOccupiedSpots }
         ]
     },
 

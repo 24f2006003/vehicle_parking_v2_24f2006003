@@ -1,87 +1,116 @@
 <template>
-  <div class="edit-lot panel">
-    <h2>Edit Parking Lot</h2>
-    <p>Update the location details for lot #{{ lotId }}.</p>
-
-    <form @submit.prevent="submitForm">
-      <label>
-        Prime Location Name
-        <input v-model="form.primeLocation" required />
-      </label>
-
-      <label>
-        Address
-        <textarea v-model="form.address" rows="3" required></textarea>
-      </label>
-
-      <div class="row">
-        <label>
-          Pin Code
-          <input v-model="form.pinCode" required />
-        </label>
-        <label>
-          Price / Hour
-          <input v-model.number="form.price" type="number" min="0" step="0.5" required />
-        </label>
+  <div class="container py-4">
+    <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+      <div class="card-header bg-warning text-dark">
+        <h4 class="mb-0">Edit Parking Lot</h4>
       </div>
+      <div class="card-body">
+        <p class="text-muted mb-4">Update the location details for lot #{{ lotId }}.</p>
 
-      <div class="row">
-        <label>
-          Number of Spots
-          <input v-model.number="form.totalSpots" type="number" min="1" required />
-        </label>
-        <label>
-          Available Spots
-          <input v-model.number="form.availableSpots" type="number" min="0" required />
-        </label>
+        <form @submit.prevent="submitForm">
+          <div class="mb-3">
+            <label class="form-label">Prime Location Name</label>
+            <input v-model="form.primeLocation" type="text" class="form-control" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <textarea v-model="form.address" class="form-control" rows="3" required></textarea>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Pin Code</label>
+              <input v-model="form.pinCode" type="text" class="form-control" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Price / Hour</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input v-model.number="form.price" type="number" class="form-control" min="0" step="0.5" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Total Spots</label>
+              <input v-model.number="form.totalSpots" type="number" class="form-control" min="1" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Available Spots</label>
+              <input v-model.number="form.availableSpots" type="number" class="form-control" min="0" required />
+            </div>
+          </div>
+
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <label class="form-label">Occupied Spots</label>
+              <input v-model.number="form.occupiedSpots" type="number" class="form-control" min="0" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Status</label>
+              <select v-model="form.status" class="form-select">
+                <option value="active">Active</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="button" class="btn btn-secondary me-md-2" @click="$router.back()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
       </div>
-
-      <div class="row">
-        <label>
-          Occupied Spots
-          <input v-model.number="form.occupiedSpots" type="number" min="0" required />
-        </label>
-        <label>
-          Status
-          <select v-model="form.status">
-            <option value="active">Active</option>
-            <option value="maintenance">Maintenance</option>
-          </select>
-        </label>
-      </div>
-
-      <button type="submit">Save Changes</button>
-    </form>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { reactive } from 'vue';
-import { useRoute } from 'vue-router';
+import { reactive, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import api from '../../api';
 
 const route = useRoute();
+const router = useRouter();
 const lotId = route.params.id;
 
 const form = reactive({
-  primeLocation: 'Default Central Parking',
-  address: '42 Sample Road, Demo City',
-  pinCode: '600001',
-  price: 25,
-  totalSpots: 120,
-  availableSpots: 48,
-  occupiedSpots: 72,
+  primeLocation: '',
+  address: '',
+  pinCode: '',
+  price: 0,
+  totalSpots: 0,
+  availableSpots: 0,
+  occupiedSpots: 0,
   status: 'active'
 });
 
-function submitForm() {
-  alert(`Lot ${lotId} updated (mock).`);
+onMounted(async () => {
+  // Try to fetch existing data
+  try {
+    const { data } = await api.get(`/api/lots/${lotId}`)
+    // Map API data to form
+    form.primeLocation = data.prime_location_name
+    form.address = data.address
+    form.pinCode = data.pin_code
+    form.price = data.price
+    form.totalSpots = data.number_of_spots
+    form.availableSpots = data.available_spots
+    // ... map other fields
+  } catch (e) {
+    console.error('Failed to load lot data', e)
+  }
+})
+
+async function submitForm() {
+  try {
+    await api.put(`/api/lots/${lotId}`, form)
+    alert(`Lot ${lotId} updated!`);
+    router.push('/admin/view');
+  } catch (e) {
+    alert('Update failed: ' + (e.response?.data?.message || e.message));
+  }
 }
 </script>
-
-<style scoped>
-.panel { padding: 1rem; max-width: 680px; }
-form { display: flex; flex-direction: column; gap: 0.75rem; }
-label { display: flex; flex-direction: column; gap: 0.25rem; }
-.row { display: flex; gap: 1rem; }
-.row label { flex: 1; }
-</style>

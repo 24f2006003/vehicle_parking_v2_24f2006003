@@ -1,71 +1,94 @@
 <template>
-  <script setup>
-  import { ref, onMounted, watch } from 'vue'
-  import api from '../../api'
+  <div class="container py-4">
+    <h3 class="mb-4 border-start border-4 border-danger ps-2">Occupied Spots</h3>
+    
+    <div v-if="error" class="alert alert-danger">{{ error }}</div>
+    
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <label class="form-label fw-bold">Select Lot:</label>
+        <select v-model="selectedLot" class="form-select w-auto d-inline-block ms-2">
+          <option value="" disabled>-- Select Lot --</option>
+          <option v-for="lot in lots" :key="lot.id" :value="lot.id">
+            {{ lot.name }}
+          </option>
+        </select>
+      </div>
+    </div>
 
-  const lots = ref([])
-  const selectedLot = ref('')
-  const spots = ref([])
-  const loading = ref(true)
-  const error = ref('')
+    <div v-if="loading" class="text-center py-4">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
 
-  onMounted(async () => {
-    try {
-      const { data } = await api.get('/api/lots')
-      lots.value = data
-    } catch (e) {
-      error.value = 'Could not load lots'
-    } finally {
-      loading.value = false
-    }
-  })
+    <div v-else-if="spots.length" class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Spot Number</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="spot in spots" :key="spot.id">
+                <td>{{ spot.spot_number }}</td>
+                <td>
+                  <span class="badge bg-danger">Occupied</span>
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-outline-danger">Force Release</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
-  watch(selectedLot, async (v) => {
-    spots.value = []
-    if (!v) return
-    try {
-      const { data } = await api.get(`/api/lots/${selectedLot.value}/spots`, { params: { status: 'O' } })
-      spots.value = data
-    } catch (e) {
-      error.value = 'Could not load spots'
-    }
-  })
-  </script>
-import { ref, onMounted } from 'vue'
+    <div v-else-if="selectedLot && !loading" class="alert alert-info">
+      No occupied spots found for this lot.
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, watch } from 'vue'
+import api from '../../api'
 
 const lots = ref([])
+const selectedLot = ref('')
 const spots = ref([])
-const selectedLot = ref(0)
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/lots')
-    if (!res.ok) throw new Error()
-    lots.value = await res.json()
+    const { data } = await api.get('/api/lots')
+    lots.value = data
   } catch (e) {
     error.value = 'Could not load lots'
-  }
-})
-
-async function loadSpots() {
-  if (!selectedLot.value) return
-  loading.value = true
-  error.value = ''
-  try {
-    const res = await fetch(`/api/lots/${selectedLot.value}/spots?status=O`)
-    if (!res.ok) throw new Error()
-    spots.value = await res.json()
-  } catch (e) {
-    error.value = 'Could not load spots'
+    console.error(e)
   } finally {
     loading.value = false
   }
-}
-</script>
+})
 
-<style scoped>
-table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-th, td { border: 1px solid; padding: 0.5rem; text-align: left; }
-</style>
+watch(selectedLot, async (v) => {
+  spots.value = []
+  if (!v) return
+  loading.value = true
+  try {
+    const { data } = await api.get(`/api/lots/${v}/spots`, { params: { status: 'O' } })
+    spots.value = data
+  } catch (e) {
+    error.value = 'Could not load spots'
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+})
+</script>

@@ -1,39 +1,20 @@
 <template>
-    <main>
-        <section>
-            <h1>Vehicle Parking System</h1>
-            <p>
-                <router-link to="/login">Login</router-link>
-                |
-                <router-link to="/register">Register</router-link>
-            </p>
-        </section>
-
-    </main>
+  <main class="container py-5">
+    <div class="px-4 py-5 my-5 text-center">
+      <h1 class="display-5 fw-bold text-primary">Vehicle Parking System</h1>
+      <div class="col-lg-6 mx-auto">
+        <p class="lead mb-4">Secure, convenient, and smart parking management at your fingertips.</p>
+        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+          <router-link to="/login" class="btn btn-primary btn-lg px-4 gap-3">Login</router-link>
+          <router-link to="/register" class="btn btn-outline-secondary btn-lg px-4">Register</router-link>
+        </div>
+      </div>
+    </div>
+  </main>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import api from '../api'
-
-const lots = ref([])
-const loading = ref(true)
-const error = ref('')
-
-onMounted(async () => {
-    try {
-        const { data } = await api.get('/api/lots')
-        lots.value = data
-    } catch (e) {
-        error.value = 'Could not load lots'
-    } finally {
-        loading.value = false
-    }
-})
 </script>
 
 <style scoped>
-main { padding: 1rem; }
-ul { padding-left: 1rem; }
-li { margin-bottom: 0.5rem; }
 </style>
