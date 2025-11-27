@@ -75,3 +75,88 @@ The API is designed using RESTful principles. It exposes endpoints for authentic
 
 ## Project Video Demonstration
 [Insert Google Drive Video Link Here]
+
+## How to Run
+
+### Prerequisites
+Ensure the following are installed on your system:
+- **Python 3.8+**
+- **Node.js** (v16+ recommended) & **npm**
+- **Redis** (Must be installed and running)
+- **Git**
+- **WSL** (Recommended for Windows users to run Redis/Celery)
+
+### Setup Instructions
+
+#### 1. Clone the Repository
+```bash
+git clone https://github.com/24f2006003/vehicle_parking_v2_24f2006003.git
+cd mad2-project-vehicle-parking
+```
+
+#### 2. Backend Setup
+Open a terminal (WSL recommended) and navigate to the backend directory:
+```bash
+cd backend
+```
+
+**Create and Activate Virtual Environment:**
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows Powershell: venv\Scripts\activate
+```
+
+**Install Dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+**Start Redis Server:**
+```bash
+sudo service redis-server start
+# Verify it's running:
+redis-cli ping  # Should return 'PONG'
+```
+
+**Start Celery Worker (Terminal 2):**
+In a new terminal (inside `backend` folder, with venv activated):
+```bash
+celery -A app.celery worker --loglevel=info
+```
+
+**Start Celery Beat (Terminal 3):**
+In a new terminal (inside `backend` folder, with venv activated):
+```bash
+celery -A app.celery beat --loglevel=info
+```
+
+**Start Flask Application (Terminal 1):**
+Back in the first terminal:
+```bash
+python app.py
+```
+The backend will run at `http://127.0.0.1:5000`.
+
+#### 3. Frontend Setup
+Open a new terminal and navigate to the frontend directory:
+```bash
+cd frontend
+```
+
+**Install Dependencies:**
+```bash
+npm install
+```
+
+**Run Development Server:**
+```bash
+npm run dev
+```
+The frontend will run at `http://localhost:5173` (or similar).
+
+#### 4. MailHog (Optional but Recommended)
+For testing emails locally, install and run MailHog.
+```bash
+~/go/bin/MailHog
+```
+Access the web interface at `http://localhost:8025`.
