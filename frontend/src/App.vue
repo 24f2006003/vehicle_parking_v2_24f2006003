@@ -7,7 +7,7 @@ import { RouterView } from 'vue-router';
 </script>
 
 <template>
-  <NavPage />
+  <!-- <NavPage /> -->
   <!-- <LoginPage/> -->
   <!-- <AdminPage/> -->
   <RouterView />

@@ -5,25 +5,15 @@
         <h4 class="mb-0">Book a Parking Spot</h4>
       </div>
       <div class="card-body">
-        <p class="text-muted mb-4">Reserve a parking spot for your upcoming visit.</p>
+        <p class="text-muted mb-4">Reserve a parking spot for your upcoming visit. Spot will be auto-assigned.</p>
 
         <form @submit.prevent="submitReservation">
           <div class="mb-3">
             <label class="form-label">Parking Lot</label>
             <select v-model="form.lotId" class="form-select" required>
               <option value="">-- Select Lot --</option>
-              <option v-for="lot in lots" :key="lot.lot_id" :value="lot.lot_id">
-                {{ lot.prime_location_name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Spot</label>
-            <select v-model="form.spotId" class="form-select" :disabled="!form.lotId || loading" required>
-              <option value="">-- Select Spot --</option>
-              <option v-for="spot in spots" :key="spot.id" :value="spot.id">
-                {{ spot.spot_number || spot.number || spot.id }} ({{ spot.type || 'General' }})
+              <option v-for="lot in lots" :key="lot.id" :value="lot.id">
+                {{ lot.prime_location_name }} ({{ lot.price }}/hr)
               </option>
             </select>
           </div>
@@ -46,7 +36,7 @@
           </div>
 
           <div class="d-grid">
-            <button type="submit" class="btn btn-primary" :disabled="loading || !form.spotId">
+            <button type="submit" class="btn btn-primary" :disabled="loading || !form.lotId">
               Reserve Spot
             </button>
           </div>
@@ -59,19 +49,17 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, watch } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../../api'
 
 const router = useRouter()
 const lots = ref([])
-const spots = ref([])
 const loading = ref(false)
 const error = ref('')
 
 const form = reactive({
   lotId: '',
-  spotId: '',
   vehicleNumber: '',
   from: '',
   to: ''
@@ -89,32 +77,24 @@ onMounted(async () => {
   }
 })
 
-watch(() => form.lotId, async (v) => {
-  spots.value = []
-  form.spotId = ''
-  if (!v) return
-  loading.value = true
-  try {
-    const { data } = await api.get(`/api/lots/${v}/spots`, { params: { status: 'available' } })
-    spots.value = data
-  } catch (e) {
-    console.error(e)
-  } finally {
-    loading.value = false
-  }
-})
-
 async function submitReservation() {
-  if (!form.spotId) return
+  if (!form.lotId) return
   loading.value = true
   error.value = ''
+
   try {
+    // Calculate estimated cost
+    const selectedLot = lots.value.find(l => l.id === form.lotId)
+    const start = new Date(form.from)
+    const end = new Date(form.to)
+    const hours = (end - start) / 36e5
+    const cost = selectedLot ? Math.max(0, (hours * selectedLot.price).toFixed(2)) : 0
+
     await api.post('/api/reservations', {
       lot_id: form.lotId,
-      spot_id: form.spotId,
-      vehicle_number: form.vehicleNumber,
-      start_time: form.from,
-      end_time: form.to
+      parking_timestamp: form.from, // Correct key expected by backend
+      leaving_timestamp: form.to,   // Correct key expected by backend
+      parking_cost: cost
     })
     alert('Reservation successful!')
     router.push('/user/history')

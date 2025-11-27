@@ -31,7 +31,7 @@
                   </span>
                 </td>
                 <td>
-                  <button class="btn btn-sm btn-outline-primary me-1">View</button>
+                  <button class="btn btn-sm btn-outline-primary me-1" @click="viewUser(user)">View</button>
                   <!-- Add more actions if needed -->
                 </td>
               </tr>
@@ -54,11 +54,15 @@ const error = ref('')
 onMounted(async () => {
   try {
     const { data } = await api.get('/api/users')
-    users.value = data
+    users.value = data.users
   } catch (e) {
     error.value = 'Could not load users'
   } finally {
     loading.value = false
   }
 })
+
+function viewUser(user) {
+  alert(`User Details:\nID: ${user.id}\nUsername: ${user.username}\nEmail: ${user.email}\nRole: ${user.role}`)
+}
 </script>

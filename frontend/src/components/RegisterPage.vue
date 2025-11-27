@@ -1,4 +1,5 @@
 <template>
+  <NavPage />
   <div class="container py-3">
     <h1 class="mb-2">Create Account</h1>
     <p class="text-muted">Register to book and manage parking spots.</p>
@@ -31,6 +32,7 @@
 <script setup>
 import { reactive } from 'vue'
 import api from '../api'
+import NavPage from './NavPage.vue'
 
 const form = reactive({ username: '', email: '', password: '', confirm: '' })
 

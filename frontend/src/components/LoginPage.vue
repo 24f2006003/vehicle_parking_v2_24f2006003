@@ -1,6 +1,9 @@
 <script>
 import api from '../api'
+import NavPage from './NavPage.vue'
+
 export default {
+  components: { NavPage },
   data() {
     return {
       formData: { email: "", password: "" },
@@ -13,14 +16,14 @@ export default {
       try {
         const { data } = await api.post('/api/login', this.formData)
         localStorage.setItem('token', data.access_token)
-        try {
-          await api.get('/api/admin_home')
+
+        if (data.role === 'admin') {
           this.$router.push('/admin')
-        } catch {
+        } else {
           this.$router.push('/user')
         }
       } catch (e) {
-        this.error = 'Login failed'
+        this.error = 'Login failed: ' + (e.response?.data || e.message)
       }
     }
   }
@@ -28,6 +31,7 @@ export default {
 </script>
 
 <template>
+  <NavPage />
   <div class="container py-3">
     <h1 class="mb-3">Login</h1>
     <form @submit.prevent="loginUser" class="row g-3" style="max-width: 640px;">
@@ -48,6 +52,4 @@ export default {
   </div>
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

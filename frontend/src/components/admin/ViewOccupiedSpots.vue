@@ -1,16 +1,16 @@
 <template>
   <div class="container py-4">
     <h3 class="mb-4 border-start border-4 border-danger ps-2">Occupied Spots</h3>
-    
+
     <div v-if="error" class="alert alert-danger">{{ error }}</div>
-    
+
     <div class="card shadow-sm mb-4">
       <div class="card-body">
         <label class="form-label fw-bold">Select Lot:</label>
         <select v-model="selectedLot" class="form-select w-auto d-inline-block ms-2">
           <option value="" disabled>-- Select Lot --</option>
           <option v-for="lot in lots" :key="lot.id" :value="lot.id">
-            {{ lot.name }}
+            {{ lot.prime_location_name }}
           </option>
         </select>
       </div>
@@ -35,7 +35,7 @@
             </thead>
             <tbody>
               <tr v-for="spot in spots" :key="spot.id">
-                <td>{{ spot.spot_number }}</td>
+                <td>{{ spot.spot_id }}</td>
                 <td>
                   <span class="badge bg-danger">Occupied</span>
                 </td>

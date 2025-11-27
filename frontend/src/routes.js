@@ -14,6 +14,7 @@ import ViewParkingLots from './components/admin/ViewParkingLots.vue';
 import ViewUsers from './components/admin/ViewUsers.vue';
 import ViewOccupiedSpots from './components/admin/ViewOccupiedSpots.vue';
 import AdminSummary from './components/admin/AdminSummary.vue';
+import ViewReservations from './components/admin/ViewReservations.vue';
 
 // User
 import UserDashboard from './components/user/UserDashboard.vue';
@@ -36,6 +37,7 @@ const routes = [
             { path: '', redirect: '/admin/view' },
             { path: 'view', component: ViewParkingLots },
             { path: 'users', component: ViewUsers },
+            { path: 'reservations', component: ViewReservations },
             { path: 'search', component: () => import('./components/admin/AdminSearch.vue') },
             { path: 'summary', component: AdminSummary },
             { path: 'add-lot', component: AddParkingLot },
@@ -51,6 +53,7 @@ const routes = [
         component: UserDashboard,
         meta: { requiresAuth: true },
         children: [
+            { path: '', redirect: '/user/summary' },
             { path: 'book/:lot_id', component: BookSpot },
             { path: 'release/:spot_id', component: ReleaseSpot },
             { path: 'history', component: ParkingHistory },

@@ -31,7 +31,7 @@ def login():
         return jsonify("Wrong username or password"), 401
 
     access_token = create_access_token(identity=user)
-    return jsonify(access_token=access_token), 200
+    return jsonify(access_token=access_token, role=user.role, username=user.username), 200
 
 
 @app.route("/api/register", methods=["POST"])
@@ -98,42 +98,33 @@ def dashboard():
             res_dict['status'] = res.status
             res_json.append(res_dict)
             
-        return jsonify(
-            message="Welcome to the user dashboard!",
-            reservations=res_json
-        ), 200
+        return jsonify(reservations=res_json), 200
 
+# User and Admin Endpoints
 
-# User Endpoints
+@app.route("/api/admin_home")
+@jwt_required()
+def admin_home():
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+    return jsonify(message="Welcome to the admin home page!"), 200
+
 
 @app.route("/api/user_home")
 @jwt_required()
 #@role_required("user")
 def user_home():
-    user = User.query.get(current_user.id)
-    user_reservations = Reservation.query.filter_by(user_id=current_user.id).all()
-    user_reg_json = []
-    for res in user_reservations:
-        res_dict = {}
-        res_dict['reservation_id'] = res.id
-        res_dict['spot_id'] = res.spot_id
-        res_dict['parking_timestamp'] = res.parking_timestamp
-        res_dict['leaving_timestamp'] = res.leaving_timestamp
-        res_dict['parking_cost'] = res.parking_cost
-        res_dict['status'] = res.status
-        user_reg_json.append(res_dict)
-    return jsonify(user_reg_json), 200
+    return jsonify(message="Welcome to the user home page!"), 200
 
-
-@app.route("/api/lots")
+@app.route("/api/lots", methods=["GET"])
 def get_parking_lots():
-    parking_lots = ParkingLot.query.all()
-    parking_lots_json = []
-    for lot in parking_lots:
+    lots = ParkingLot.query.all()
+    lots_json = []
+    for lot in lots:
         total = len(lot.spots) or lot.number_of_spots
         available = sum(1 for s in lot.spots if s.status == 'A')
         lot_dict = {
-            'lot_id': lot.id,
+            'id': lot.id,
             'prime_location_name': lot.prime_location_name,
             'price': lot.price,
             'address': lot.address,
@@ -141,8 +132,8 @@ def get_parking_lots():
             'number_of_spots': total,
             'available_spots': available
         }
-        parking_lots_json.append(lot_dict)
-    return jsonify(parking_lots_json), 200
+        lots_json.append(lot_dict)
+    return jsonify(lots_json), 200
 
 @app.route("/api/lots", methods=["POST"])
 @jwt_required()
@@ -288,9 +279,19 @@ def get_parking_spots(lot_id):
 @jwt_required()
 def create_reservation():
     lot_id = request.json.get("lot_id", None)
-    parking_timestamp = request.json.get("parking_timestamp", None)
-    leaving_timestamp = request.json.get("leaving_timestamp", None)
+    parking_timestamp_str = request.json.get("parking_timestamp", None)
+    leaving_timestamp_str = request.json.get("leaving_timestamp", None)
     parking_cost = request.json.get("parking_cost", None)
+
+    if parking_timestamp_str:
+        parking_timestamp = datetime.fromisoformat(parking_timestamp_str)
+    else:
+        parking_timestamp = datetime.now()
+        
+    if leaving_timestamp_str:
+        leaving_timestamp = datetime.fromisoformat(leaving_timestamp_str)
+    else:
+        leaving_timestamp = None
 
     # Auto-allocation logic
     spot = ParkingSpot.query.filter_by(lot_id=lot_id, status='A').first()
@@ -310,21 +311,32 @@ def create_reservation():
 
 @app.route("/api/reservations")
 @jwt_required()
-def get_my_reservations():
-    user = User.query.get(current_user.id)
-    reservations = Reservation.query.filter_by(user_id=user.id).all()
-    reservations_json = []
-    for res in reservations:
-        res_dict = {
-            'reservation_id': res.id,
-            'spot_id': res.spot_id,
-            'parking_timestamp': res.parking_timestamp,
-            'leaving_timestamp': res.leaving_timestamp,
-            'parking_cost': res.parking_cost,
-            'status': res.status
-        }
-        reservations_json.append(res_dict)
-    return jsonify(reservations_json), 200
+def get_reservations():
+    # If admin, return all. If user, return own.
+    if current_user.role == "admin":
+        reservations = Reservation.query.all()
+        reservation_list = [{
+            'id': reservation.id,
+            'lot_id': reservation.spot.lot_id,
+            'spot_id': reservation.spot_id,
+            'status': reservation.status
+        } for reservation in reservations]
+        return jsonify(reservations=reservation_list), 200
+    else:
+        user = User.query.get(current_user.id)
+        reservations = Reservation.query.filter_by(user_id=user.id).all()
+        reservations_json = []
+        for res in reservations:
+            res_dict = {
+                'reservation_id': res.id,
+                'spot_id': res.spot_id,
+                'parking_timestamp': res.parking_timestamp,
+                'leaving_timestamp': res.leaving_timestamp,
+                'parking_cost': res.parking_cost,
+                'status': res.status
+            }
+            reservations_json.append(res_dict)
+        return jsonify(reservations_json), 200
 
 @app.route("/api/reservations/<int:reservation_id>")
 @jwt_required()
@@ -343,8 +355,8 @@ def get_reservation(reservation_id):
 @app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
 @jwt_required()
 def update_reservation(reservation_id):
-    # - Users: allowed actions via { action: "leave"|"complete" } only on their own reservations.
-    # - Admins: can update fields: spot_id, status, parking_timestamp, leaving_timestamp, parking_cost.
+    # Users: allowed actions via { action: "leave"|"complete" } only on their own reservations.
+    # Admins: can update fields: spot_id, status, parking_timestamp, leaving_timestamp, parking_cost.
 
     reservation = Reservation.query.get_or_404(reservation_id)
     data = request.json or {}
@@ -363,6 +375,7 @@ def update_reservation(reservation_id):
             reservation.leaving_timestamp = data.get("leaving_timestamp", reservation.leaving_timestamp)
         if "parking_cost" in data:
             reservation.parking_cost = data.get("parking_cost", reservation.parking_cost)
+        
         db.session.commit()
         return jsonify(message="Reservation updated successfully"), 200
 
@@ -387,7 +400,7 @@ def update_reservation(reservation_id):
             duration = now - reservation.parking_timestamp
             hours = duration.total_seconds() / 3600
             price_per_hour = reservation.spot.lot.price
-            reservation.parking_cost = round(hours * price_per_hour, 2)
+            reservation.parking_cost = max(0, round(hours * price_per_hour, 2))
             
     else:
         return jsonify(message="Invalid action"), 400
@@ -471,23 +484,7 @@ def get_user_reservations(user_id):
 
     return jsonify(reservations=reservation_list), 200
 
-@app.route("/api/reservations")
-@jwt_required()
-def get_reservations():
-    if current_user.role != "admin":
-        return jsonify(message="Unauthorized"), 403
-
-    reservations = Reservation.query.all()
-    reservation_list = [{
-        'id': reservation.id,
-        'lot_id': reservation.spot.lot_id,
-        'spot_id': reservation.spot_id,
-        'status': reservation.status
-    } for reservation in reservations]
-
-    return jsonify(reservations=reservation_list), 200
-
-@app.route("/api/reservations/<int:reservation_id>/invoice")
+@app.route("/api/reservations/<int:reservation_id>/invoice", methods=["GET", "POST"])
 @jwt_required()
 def create_reservation_invoice(reservation_id):
     if current_user.role != "admin":
@@ -535,7 +532,8 @@ def trigger_monthly_report():
 
 @app.route('/api/send_mail')
 def send_mail():
-    res = monthly_report().delay()
+    from application.tasks import monthly_report
+    res = monthly_report.delay()
     return{
-        "message": res.result
+        "message": str(res)
     }

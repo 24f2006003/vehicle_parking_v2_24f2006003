@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from jinja2 import Template
+import os
 
 SMTP_SERVER_HOST = "localhost"
 SMTP_SERVER_PORT = 1025
@@ -27,7 +28,7 @@ def send_email(to_address, subject, message, content = "html", attachment_file =
             part.set_payload(attachment.read())
 
         encoders.encode_base64(part) # email attachments are sent as base64 encoded.
-        part.add_header("Content-Disposition", f"attachment; filename = {attachment_file}") # refer https://www.ietf.org/rtc/rtc2183.txt
+        part.add_header("Content-Disposition", f"attachment; filename = {os.path.basename(attachment_file)}") 
         msg.attach(part) #add attachment to message
 
     s = smtplib.SMTP(host = SMTP_SERVER_HOST, port = SMTP_SERVER_PORT)

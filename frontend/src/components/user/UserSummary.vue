@@ -36,7 +36,7 @@
         <div class="card text-white bg-success h-100 shadow-sm border-0">
           <div class="card-body">
             <h5 class="card-title opacity-75">Amount Spent (₹)</h5>
-            <p class="display-4 fw-bold mb-0">{{ summary.amountSpent }}</p>
+            <p class="display-4 fw-bold mb-0">{{ summary.amountSpent.toFixed(2) }}</p>
           </div>
         </div>
       </div>
@@ -49,7 +49,7 @@
           <div class="card-header bg-white fw-bold py-3">Activity Overview</div>
           <div class="card-body">
             <p class="text-muted small mb-3">Your parking activity relative to a monthly cap of 30 bookings.</p>
-            
+
             <div class="mb-4">
               <div class="d-flex justify-content-between mb-1">
                 <span class="fw-medium">Booking Frequency</span>
@@ -79,22 +79,23 @@
         <div class="card h-100 shadow-sm border-0">
           <div class="card-header bg-white fw-bold py-3">Spending Analysis</div>
           <div class="card-body">
-             <p class="text-muted small mb-3">Spending distribution across your top locations.</p>
-             
-             <div v-if="Object.keys(spendingByLot).length === 0" class="text-center text-muted py-4">
-               No spending data available.
-             </div>
+            <p class="text-muted small mb-3">Spending distribution across your top locations.</p>
 
-             <div v-for="(amount, lotId) in spendingByLot" :key="lotId" class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                  <span>Lot #{{ lotId }}</span>
-                  <span>₹{{ amount }}</span>
-                </div>
-                <div class="progress" style="height: 8px;">
-                  <div class="progress-bar bg-info" role="progressbar" :style="{ width: getSpendingPercent(amount) + '%' }"
-                    :aria-valuenow="getSpendingPercent(amount)" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
-             </div>
+            <div v-if="Object.keys(spendingByLot).length === 0" class="text-center text-muted py-4">
+              No spending data available.
+            </div>
+
+            <div v-for="(amount, lotId) in spendingByLot" :key="lotId" class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span>Lot #{{ lotId }}</span>
+                <span>₹{{ amount.toFixed(2) }}</span>
+              </div>
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-info" role="progressbar"
+                  :style="{ width: getSpendingPercent(amount) + '%' }" :aria-valuenow="getSpendingPercent(amount)"
+                  aria-valuemin="0" aria-valuemax="100"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -138,11 +139,11 @@ onMounted(async () => {
   try {
     const { data } = await api.get('/api/reservations')
     reservations.value = data
-    
+
     summary.value.totalReservations = data.length
     summary.value.amountSpent = data.reduce((s, r) => s + (r.parking_cost || 0), 0)
     summary.value.hoursParked = data.length * 2 // Mock: assuming avg 2 hours per booking
-    
+
     // Calculate spending by lot
     const spending = {}
     data.forEach(r => {

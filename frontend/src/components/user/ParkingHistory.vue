@@ -34,7 +34,7 @@
                 <td>
                   <span class="badge" :class="getStatusClass(item.status)">{{ item.status }}</span>
                 </td>
-                <td>{{ item.parking_cost }}</td>
+                <td>{{ item.parking_cost ? item.parking_cost.toFixed(2) : '0.00' }}</td>
               </tr>
             </tbody>
           </table>
