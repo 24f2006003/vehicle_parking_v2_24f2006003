@@ -1,40 +1,48 @@
 <template>
-  <div class="user-dashboard container-fluid p-0">
+  <div class="user-dashboard min-vh-100 bg-light">
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom px-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm px-4">
       <div class="container-fluid">
-        <span class="navbar-brand fw-bold text-primary">Welcome User</span>
-        <div class="d-flex align-items-center">
-          <ul class="nav nav-pills me-4">
+        <span class="navbar-brand fw-bold text-uppercase tracking-wide">
+          <i class="bi bi-car-front-fill me-2"></i>Parking<span class="text-primary">App</span>
+        </span>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+          <ul class="navbar-nav align-items-center">
             <li class="nav-item">
-              <router-link to="/user/history" class="nav-link" active-class="active">History</router-link>
+              <router-link to="/user/history" class="nav-link px-3" active-class="active">History</router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/user/book/0" class="nav-link" active-class="active">Book Spot</router-link>
+              <router-link to="/user/book/0" class="nav-link px-3" active-class="active">Book Spot</router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/user/release/0" class="nav-link" active-class="active">Release Spot</router-link>
+              <router-link to="/user/release/0" class="nav-link px-3" active-class="active">Release Spot</router-link>
             </li>
             <li class="nav-item">
-              <router-link to="/user/summary" class="nav-link" active-class="active">Summary</router-link>
+              <router-link to="/user/summary" class="nav-link px-3" active-class="active">Summary</router-link>
+            </li>
+            <li class="nav-item ms-lg-3">
+              <button class="btn btn-outline-danger btn-sm rounded-pill px-4" @click.prevent="logout">Logout</button>
             </li>
           </ul>
-          <a href="#" class="text-danger text-decoration-none" @click.prevent="logout">Logout</a>
         </div>
       </div>
     </nav>
 
     <!-- Content Area -->
-    <div class="container py-4">
+    <div class="container py-5">
       <!-- Quick Info Card -->
-      <div class="card shadow-sm mb-4 border-start border-4 border-primary">
-        <div class="card-body">
-          <h5 class="card-title">Current Reservation</h5>
-          <div v-if="current">
-            <p class="mb-1"><strong>Spot:</strong> {{ current.spot_id }}</p>
-            <p class="mb-0"><strong>Status:</strong> <span class="badge bg-success">{{ current.status }}</span></p>
+      <div v-if="current" class="card shadow-sm mb-5 border-0 border-start border-4 border-primary">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title mb-1">Active Reservation</h5>
+            <p class="text-muted mb-0">Spot #{{ current.spot_id }}</p>
           </div>
-          <p v-else class="text-muted mb-0">No active reservations right now.</p>
+          <span class="badge bg-success rounded-pill px-3 py-2">{{ current.status }}</span>
         </div>
       </div>
 
@@ -50,7 +58,6 @@ import api from '../../api'
 
 const router = useRouter()
 const current = ref(null)
-const reservations = ref([])
 const loading = ref(true)
 const error = ref('')
 
@@ -58,12 +65,13 @@ onMounted(async () => {
   const token = localStorage.getItem('token')
   if (!token) { loading.value = false; error.value = 'Please login'; return }
   try {
-    // Attempt to fetch reservations if endpoint exists
-    // const { data } = await api.get('/api/reservations')
-    // reservations.value = data
-    // current.value = Array.isArray(data) ? data.find(r => r.status === 'active') || data[0] : null
+    // Attempt to fetch reservations to find active one
+    const { data } = await api.get('/api/reservations')
+    if (Array.isArray(data)) {
+        current.value = data.find(r => r.status === 'active')
+    }
   } catch (e) {
-    error.value = 'Could not load reservations'
+    console.error('Could not load active reservation')
   } finally {
     loading.value = false
   }
@@ -76,12 +84,18 @@ function logout() {
 </script>
 
 <style scoped>
+.tracking-wide {
+  letter-spacing: 1px;
+}
 .nav-link {
-  color: #495057;
   font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-link:hover {
+  color: #fff !important;
 }
 .nav-link.active {
-  background-color: #0d6efd !important;
-  color: white !important;
+  color: #0d6efd !important;
+  font-weight: 600;
 }
 </style>

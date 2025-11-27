@@ -10,7 +10,7 @@
         <form @submit.prevent="submitForm">
           <div class="mb-3">
             <label class="form-label">Prime Location Name</label>
-            <input v-model="form.primeLocation" type="text" class="form-control" required />
+            <input v-model="form.prime_location_name" type="text" class="form-control" required />
           </div>
 
           <div class="mb-3">
@@ -21,7 +21,7 @@
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Pin Code</label>
-              <input v-model="form.pinCode" type="text" class="form-control" required />
+              <input v-model="form.pin_code" type="text" class="form-control" required />
             </div>
             <div class="col-md-6">
               <label class="form-label">Price / Hour</label>
@@ -35,25 +35,11 @@
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Total Spots</label>
-              <input v-model.number="form.totalSpots" type="number" class="form-control" min="1" required />
+              <input v-model.number="form.number_of_spots" type="number" class="form-control" min="1" required />
             </div>
             <div class="col-md-6">
               <label class="form-label">Available Spots</label>
-              <input v-model.number="form.availableSpots" type="number" class="form-control" min="0" required />
-            </div>
-          </div>
-
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <label class="form-label">Occupied Spots</label>
-              <input v-model.number="form.occupiedSpots" type="number" class="form-control" min="0" required />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Status</label>
-              <select v-model="form.status" class="form-select">
-                <option value="active">Active</option>
-                <option value="maintenance">Maintenance</option>
-              </select>
+              <input v-model.number="form.available_spots" type="number" class="form-control" min="0" required />
             </div>
           </div>
 
@@ -77,14 +63,12 @@ const router = useRouter();
 const lotId = route.params.id;
 
 const form = reactive({
-  primeLocation: '',
+  prime_location_name: '',
   address: '',
-  pinCode: '',
+  pin_code: '',
   price: 0,
-  totalSpots: 0,
-  availableSpots: 0,
-  occupiedSpots: 0,
-  status: 'active'
+  number_of_spots: 0,
+  available_spots: 0
 });
 
 onMounted(async () => {
@@ -92,13 +76,12 @@ onMounted(async () => {
   try {
     const { data } = await api.get(`/api/lots/${lotId}`)
     // Map API data to form
-    form.primeLocation = data.prime_location_name
+    form.prime_location_name = data.prime_location_name
     form.address = data.address
-    form.pinCode = data.pin_code
+    form.pin_code = data.pin_code
     form.price = data.price
-    form.totalSpots = data.number_of_spots
-    form.availableSpots = data.available_spots
-    // ... map other fields
+    form.number_of_spots = data.number_of_spots
+    form.available_spots = data.available_spots
   } catch (e) {
     console.error('Failed to load lot data', e)
   }
@@ -106,7 +89,7 @@ onMounted(async () => {
 
 async function submitForm() {
   try {
-    await api.put(`/api/lots/${lotId}`, form)
+    await api.patch(`/api/lots/${lotId}`, form)
     alert(`Lot ${lotId} updated!`);
     router.push('/admin/view');
   } catch (e) {

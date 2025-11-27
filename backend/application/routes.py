@@ -306,49 +306,6 @@ def delete_reservation(reservation_id):
 @app.route("/api/admin_home")
 @jwt_required()
 def admin_home():
-    if current_user.role == "admin":
-        return "Welcome to the admin home page!", 200
-    else:
-        return jsonify(message="Unauthorized"), 403
-
-@app.route("/api/lots", methods=["POST"])
-@jwt_required()
-def create_parking_lot():
-    if current_user.role != "admin":
-        return jsonify(message="Unauthorized"), 403
-
-    data = request.json
-    new_lot = ParkingLot(
-        name=data.get("name"),
-        location=data.get("location"),
-        total_spots=data.get("total_spots"),
-        available_spots=data.get("available_spots")
-    )
-    db.session.add(new_lot)
-    db.session.commit()
-    return jsonify(message="Parking lot created successfully"), 201
-
-@app.route("/api/lots/<int:lot_id>", methods=["PATCH"])
-@jwt_required()
-def update_parking_lot(lot_id):
-    if current_user.role != "admin":
-        return jsonify(message="Unauthorized"), 403
-
-    lot = ParkingLot.query.get_or_404(lot_id)
-    data = request.json
-
-    lot.name = data.get("name", lot.name)
-    lot.location = data.get("location", lot.location)
-    lot.total_spots = data.get("total_spots", lot.total_spots)
-    lot.available_spots = data.get("available_spots", lot.available_spots)
-
-    db.session.commit()
-    return jsonify(message="Parking lot updated successfully"), 200
-
-@app.route("/api/lots/<int:lot_id>", methods=["DELETE"])
-@jwt_required()
-def delete_parking_lot(lot_id):
-    if current_user.role != "admin":
         return jsonify(message="Unauthorized"), 403
 
     lot = ParkingLot.query.get_or_404(lot_id)

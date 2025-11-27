@@ -1,0 +1,376 @@
+openapi: 3.0.0
+info:
+  title: Vehicle Parking Management API
+  description: API for managing parking lots, spots, users, and reservations.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/login:
+    post:
+      summary: User Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+        '401':
+          description: Invalid credentials
+
+  /api/register:
+    post:
+      summary: User Registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: User already exists
+
+  /api/dashboard:
+    get:
+      summary: Get Dashboard Statistics
+      description: Returns stats based on user role (Admin or User).
+      responses:
+        '200':
+          description: Dashboard data
+
+  /api/admin_home:
+    get:
+      summary: Admin Home Check
+      responses:
+        '200':
+          description: Welcome message
+        '403':
+          description: Unauthorized
+
+  /api/user_home:
+    get:
+      summary: User Home Data
+      responses:
+        '200':
+          description: User reservations and data
+
+  /api/lots:
+    get:
+      summary: List all Parking Lots
+      security: []
+      responses:
+        '200':
+          description: List of parking lots
+    post:
+      summary: Create a Parking Lot (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prime_location_name:
+                  type: string
+                address:
+                  type: string
+                pin_code:
+                  type: integer
+                price:
+                  type: number
+                  format: float
+                number_of_spots:
+                  type: integer
+                available_spots:
+                  type: integer
+      responses:
+        '201':
+          description: Created successfully
+
+  /api/lots/{lot_id}:
+    get:
+      summary: Get Parking Lot Details
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lot details
+    patch:
+      summary: Update Parking Lot (Admin only)
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                prime_location_name:
+                  type: string
+                address:
+                  type: string
+                pin_code:
+                  type: integer
+                price:
+                  type: number
+                number_of_spots:
+                  type: integer
+                available_spots:
+                  type: integer
+      responses:
+        '200':
+          description: Updated successfully
+    delete:
+      summary: Delete Parking Lot (Admin only)
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted successfully
+
+  /api/lots/{lot_id}/spots:
+    get:
+      summary: Get Spots for a Lot
+      parameters:
+        - name: lot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [A, O]
+      responses:
+        '200':
+          description: List of spots
+
+  /api/spots/{spot_id}:
+    patch:
+      summary: Update Spot Status (Admin only)
+      parameters:
+        - name: spot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                lot_id:
+                  type: integer
+      responses:
+        '200':
+          description: Updated successfully
+
+  /api/users:
+    get:
+      summary: List All Users (Admin only)
+      responses:
+        '200':
+          description: List of users
+
+  /api/users/{user_id}:
+    get:
+      summary: Get User Details (Admin only)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User details
+
+  /api/users/{user_id}/reservations:
+    get:
+      summary: Get User Reservations (Admin only)
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of reservations
+
+  /api/reservations:
+    get:
+      summary: Get User Reservations
+      responses:
+        '200':
+          description: List of reservations
+    post:
+      summary: Create Reservation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lot_id:
+                  type: integer
+                parking_timestamp:
+                  type: string
+                  format: date-time
+                leaving_timestamp:
+                  type: string
+                  format: date-time
+                parking_cost:
+                  type: number
+      responses:
+        '201':
+          description: Reservation created
+
+  /api/reservations/{reservation_id}:
+    get:
+      summary: Get Reservation Details
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Reservation details
+    patch:
+      summary: Update Reservation
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [leave, complete]
+                spot_id:
+                  type: integer
+                status:
+                  type: string
+                parking_timestamp:
+                  type: string
+                leaving_timestamp:
+                  type: string
+                parking_cost:
+                  type: number
+      responses:
+        '200':
+          description: Updated successfully
+    delete:
+      summary: Delete/Cancel Reservation
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted successfully
+
+  /api/reservations/{reservation_id}/invoice:
+    get:
+      summary: Get Reservation Invoice
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Invoice data
+
+  /api/export_csv:
+    post:
+      summary: Trigger CSV Export Job
+      responses:
+        '202':
+          description: Job started
+
+  /api/daily_reminder:
+    post:
+      summary: Trigger Daily Reminder Job (Admin only)
+      responses:
+        '202':
+          description: Job started
+
+  /api/monthly_report:
+    post:
+      summary: Trigger Monthly Report Job (Admin only)
+      responses:
+        '202':
+          description: Job started
+
+  /api/send_mail:
+    get:
+      summary: Email Sending
+      responses:
+        '200':
+          description: Result

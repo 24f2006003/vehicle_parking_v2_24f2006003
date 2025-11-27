@@ -10,7 +10,7 @@
         <form @submit.prevent="submitForm">
           <div class="mb-3">
             <label class="form-label">Prime Location Name</label>
-            <input v-model="form.primeLocation" type="text" class="form-control" required
+            <input v-model="form.prime_location_name" type="text" class="form-control" required
               placeholder="e.g. Downtown Plaza" />
           </div>
 
@@ -23,7 +23,7 @@
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label">Pin Code</label>
-              <input v-model="form.pinCode" type="text" class="form-control" required />
+              <input v-model="form.pin_code" type="text" class="form-control" required />
             </div>
             <div class="col-md-6">
               <label class="form-label">Price / Hour</label>
@@ -37,11 +37,11 @@
           <div class="row mb-4">
             <div class="col-md-6">
               <label class="form-label">Total Spots</label>
-              <input v-model.number="form.totalSpots" type="number" class="form-control" min="1" required />
+              <input v-model.number="form.number_of_spots" type="number" class="form-control" min="1" required />
             </div>
             <div class="col-md-6">
               <label class="form-label">Available Spots</label>
-              <input v-model.number="form.availableSpots" type="number" class="form-control" min="0" required />
+              <input v-model.number="form.available_spots" type="number" class="form-control" min="0" required />
             </div>
           </div>
 
@@ -57,23 +57,23 @@
 
 <script setup>
 import { reactive } from 'vue';
-import api from '../../api'; // Assuming we might want to hook this up later, but keeping mock for now as per file content
+import api from '../../api';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const form = reactive({
-  primeLocation: '',
+  prime_location_name: '',
   address: '',
-  pinCode: '',
+  pin_code: '',
   price: 0,
-  totalSpots: 0,
-  availableSpots: 0
+  number_of_spots: 0,
+  available_spots: 0
 });
 
 async function submitForm() {
   try {
     await api.post('/api/lots', form)
-    alert(`Lot ${form.primeLocation} added!`);
+    alert(`Lot ${form.prime_location_name} added!`);
     router.push('/admin/view');
   } catch (e) {
     alert('Failed to add lot: ' + (e.response?.data?.message || e.message));
