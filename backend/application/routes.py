@@ -144,6 +144,40 @@ def get_parking_lots():
         parking_lots_json.append(lot_dict)
     return jsonify(parking_lots_json), 200
 
+@app.route("/api/lots", methods=["POST"])
+@jwt_required()
+def create_parking_lot():
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+
+    data = request.json
+    prime_location_name = data.get("prime_location_name")
+    price = data.get("price")
+    address = data.get("address")
+    pin_code = data.get("pin_code")
+    number_of_spots = data.get("number_of_spots")
+
+    if not all([prime_location_name, price, address, pin_code, number_of_spots]):
+        return jsonify(message="Missing required fields"), 400
+
+    lot = ParkingLot(
+        prime_location_name=prime_location_name,
+        price=price,
+        address=address,
+        pin_code=pin_code,
+        number_of_spots=number_of_spots,
+        available_spots=number_of_spots
+    )
+    db.session.add(lot)
+    db.session.flush()
+
+    for _ in range(number_of_spots):
+        spot = ParkingSpot(lot_id=lot.id, status='A')
+        db.session.add(spot)
+
+    db.session.commit()
+    return jsonify(message="Parking lot created successfully", lot_id=lot.id), 201
+
 @app.route("/api/lot/<int:lot_id>")
 def get_parking_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
@@ -159,6 +193,70 @@ def get_parking_lot(lot_id):
         'available_spots': available
     }
     return jsonify(lot_dict), 200
+
+@app.route("/api/lots/<int:lot_id>", methods=["PATCH"])
+@jwt_required()
+def update_parking_lot(lot_id):
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+
+    lot = ParkingLot.query.get_or_404(lot_id)
+    data = request.json
+
+    lot.prime_location_name = data.get("prime_location_name", lot.prime_location_name)
+    lot.price = data.get("price", lot.price)
+    lot.address = data.get("address", lot.address)
+    lot.pin_code = data.get("pin_code", lot.pin_code)
+
+    new_total_spots = data.get("number_of_spots")
+    if new_total_spots is not None and new_total_spots != lot.number_of_spots:
+        current_spots = len(lot.spots)
+        diff = new_total_spots - current_spots
+
+        if diff > 0:
+            # Add new spots
+            for _ in range(diff):
+                db.session.add(ParkingSpot(lot_id=lot.id, status='A'))
+        elif diff < 0:
+            # Remove available spots
+            spots_to_remove = abs(diff)
+            available_spots = [s for s in lot.spots if s.status == 'A']
+            if len(available_spots) < spots_to_remove:
+                return jsonify(message=f"Cannot reduce spots by {spots_to_remove}. Only {len(available_spots)} available spots."), 400
+            
+            for i in range(spots_to_remove):
+                db.session.delete(available_spots[i])
+
+        lot.number_of_spots = new_total_spots
+        # Recalculate available spots
+        db.session.flush()
+        lot.available_spots = sum(1 for s in lot.spots if s.status == 'A')
+
+    db.session.commit()
+    # Refresh to get accurate count
+    lot.available_spots = sum(1 for s in lot.spots if s.status == 'A')
+    db.session.commit()
+    
+    return jsonify(message="Parking lot updated successfully"), 200
+
+@app.route("/api/lots/<int:lot_id>", methods=["DELETE"])
+@jwt_required()
+def delete_parking_lot(lot_id):
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+
+    lot = ParkingLot.query.get_or_404(lot_id)
+    
+    # Check if any spot is occupied
+    occupied_spots = ParkingSpot.query.filter_by(lot_id=lot_id, status='O').count()
+    if occupied_spots > 0:
+        return jsonify(message="Cannot delete parking lot with occupied spots"), 400
+
+    # Delete all spots first
+    ParkingSpot.query.filter_by(lot_id=lot_id).delete()
+    db.session.delete(lot)
+    db.session.commit()
+    return jsonify(message="Parking lot deleted successfully"), 200
 
 @app.route("/api/lots/<int:lot_id>/spots")
 def get_parking_spots(lot_id):
@@ -281,6 +379,16 @@ def update_reservation(reservation_id):
         reservation.status = "C"
         reservation.spot.status = 'A'
         reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
+        
+        now = datetime.now()
+        reservation.leaving_timestamp = now
+        
+        if reservation.parking_timestamp:
+            duration = now - reservation.parking_timestamp
+            hours = duration.total_seconds() / 3600
+            price_per_hour = reservation.spot.lot.price
+            reservation.parking_cost = round(hours * price_per_hour, 2)
+            
     else:
         return jsonify(message="Invalid action"), 400
 
@@ -299,25 +407,6 @@ def delete_reservation(reservation_id):
     db.session.delete(reservation)
     db.session.commit()
     return jsonify(message="Reservation canceled successfully"), 204
-
-
-# Admin Endpoints
-
-@app.route("/api/admin_home")
-@jwt_required()
-def admin_home():
-        return jsonify(message="Unauthorized"), 403
-
-    lot = ParkingLot.query.get_or_404(lot_id)
-    
-    # Check if any spot is occupied
-    occupied_spots = ParkingSpot.query.filter_by(lot_id=lot_id, status='O').count()
-    if occupied_spots > 0:
-        return jsonify(message="Cannot delete parking lot with occupied spots"), 400
-
-    db.session.delete(lot)
-    db.session.commit()
-    return jsonify(message="Parking lot deleted successfully"), 200
 
 @app.route("/api/spots/<int:spot_id>", methods=["PATCH"])
 @jwt_required()
