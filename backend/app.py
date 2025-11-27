@@ -14,6 +14,8 @@ def create_app():
     app.config.from_object(LocalDevelopmentConfig)
     db.init_app(app)
     jwt.init_app(app)
+    from application.cache import cache
+    cache.init_app(app)
     CORS(app)
     app.app_context().push()
     db.create_all()
@@ -53,16 +55,16 @@ celery.autodiscover_tasks()
 def setup_periodic_tasks(sender, **kwargs):
     from application.tasks import daily_reminder, monthly_report
     
-    # Daily reminder at 6 PM
+    # Daily reminder every 2 minutes for demo
     sender.add_periodic_task(
-        crontab(hour=18, minute=0),
+        120.0,
         daily_reminder.s(),
         name='daily-reminder'
     )
     
-    # Monthly report on the 1st of every month at midnight
+    # Monthly report every 5 minutes for demo
     sender.add_periodic_task(
-        crontab(day_of_month=1, hour=0, minute=0),
+        300.0,
         monthly_report.s(),
         name='monthly-report'
     )

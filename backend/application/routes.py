@@ -4,6 +4,7 @@ from .database import db
 from flask_jwt_extended import create_access_token, current_user, jwt_required
 from functools import wraps
 from datetime import datetime
+from application.cache import cache
 
 def calculate_invoice_amount(reservation):
     return reservation.parking_cost or 0
@@ -48,34 +49,39 @@ def register():
     db.session.commit()
     return jsonify("User created successfully"), 201
 
+@cache.cached(timeout=60, key_prefix='admin_dashboard_stats')
+def get_admin_dashboard_stats():
+    users = User.query.filter_by(role="user").all()
+    reservations = Reservation.query.all()
+    parking_lots = ParkingLot.query.all()
+    total_users = len(users)
+    parking_spots_json = []
+    for lot in parking_lots:
+        total = len(lot.spots)
+        available = sum(1 for s in lot.spots if s.status == 'A')
+        occupied = total - available
+        spots_dict = {
+            'id': lot.id,
+            'total_spots': total or lot.number_of_spots,
+            'available_spots': available,
+            'occupied_spots': occupied
+        }
+        parking_spots_json.append(spots_dict)
+
+    return {
+        "message": "Welcome to the admin dashboard!",
+        "total_users": total_users,
+        "total_reservations": len(reservations),
+        "total_parking_lots": len(parking_lots),
+        "parking_lots": parking_spots_json
+    }
+
 @app.route("/api/dashboard")
 @jwt_required()
 def dashboard():
     if current_user.role == "admin":
-        users = User.query.filter_by(role="user").all()
-        reservations = Reservation.query.all()
-        parking_lots = ParkingLot.query.all()
-        total_users = len(users)
-        parking_spots_json = []
-        for lot in parking_lots:
-            total = len(lot.spots)
-            available = sum(1 for s in lot.spots if s.status == 'A')
-            occupied = total - available
-            spots_dict = {
-                'id': lot.id,
-                'total_spots': total or lot.number_of_spots,
-                'available_spots': available,
-                'occupied_spots': occupied
-            }
-            parking_spots_json.append(spots_dict)
-
-        return jsonify(
-            message="Welcome to the admin dashboard!",
-            total_users=total_users,
-            total_reservations=len(reservations),
-            total_parking_lots=len(parking_lots),
-            parking_lots=parking_spots_json
-        ), 200
+        stats = get_admin_dashboard_stats()
+        return jsonify(stats), 200
     else:
         user = User.query.get(current_user.id)
         if not user:
@@ -168,6 +174,14 @@ def get_parking_spots(lot_id):
             'lot_id': spot.lot_id,
             'status': spot.status
         }
+        if spot.status == 'O':
+            # Fetch active reservation details
+            active_res = Reservation.query.filter_by(spot_id=spot.id, status='active').first()
+            if active_res:
+                spot_dict['reservation_id'] = active_res.id
+                spot_dict['user_id'] = active_res.user_id
+                spot_dict['username'] = active_res.user.username
+                spot_dict['parking_timestamp'] = active_res.parking_timestamp
         spots_json.append(spot_dict)
     return jsonify(spots_json), 200
 
@@ -175,15 +189,19 @@ def get_parking_spots(lot_id):
 @app.route("/api/reservations", methods=["POST"])
 @jwt_required()
 def create_reservation():
-    spot_id = request.json.get("spot_id", None)
+    lot_id = request.json.get("lot_id", None)
     parking_timestamp = request.json.get("parking_timestamp", None)
     leaving_timestamp = request.json.get("leaving_timestamp", None)
     parking_cost = request.json.get("parking_cost", None)
 
-    spot = ParkingSpot.query.get_or_404(spot_id)
-    if spot.status != 'A':
-        return jsonify("Spot is not available"), 400
+    # Auto-allocation logic
+    spot = ParkingSpot.query.filter_by(lot_id=lot_id, status='A').first()
+    
+    if not spot:
+        return jsonify("No available spots in this lot"), 400
 
+    spot_id = spot.id
+    
     reservation = Reservation(spot_id=spot_id, user_id=current_user.id, parking_timestamp=parking_timestamp, leaving_timestamp=leaving_timestamp, parking_cost=parking_cost)
     db.session.add(reservation)
     spot.status = 'O'
@@ -334,6 +352,12 @@ def delete_parking_lot(lot_id):
         return jsonify(message="Unauthorized"), 403
 
     lot = ParkingLot.query.get_or_404(lot_id)
+    
+    # Check if any spot is occupied
+    occupied_spots = ParkingSpot.query.filter_by(lot_id=lot_id, status='O').count()
+    if occupied_spots > 0:
+        return jsonify(message="Cannot delete parking lot with occupied spots"), 400
+
     db.session.delete(lot)
     db.session.commit()
     return jsonify(message="Parking lot deleted successfully"), 200
