@@ -15,7 +15,8 @@ A comprehensive web application for managing vehicle parking, featuring role-bas
 - **Flask-Mail**: For sending email notifications.
 
 ## DB Schema Design
-*(Placeholder for DB Diagram)*
+
+<img width="835" height="680" alt="Vehicle-Parking-DBDiagram" src="https://github.com/user-attachments/assets/aaa6a782-4ddb-41a6-a674-c3ae5f7ff72e" />
 
 ### Users Table
 - `id`: Integer, Primary Key
