@@ -218,6 +218,13 @@ paths:
         '200':
           description: Updated successfully
 
+  /api/spots/occupied:
+    get:
+      summary: Get All Occupied Spots (Admin only)
+      responses:
+        '200':
+          description: List of occupied spots
+
   /api/users:
     get:
       summary: List All Users (Admin only)
@@ -354,6 +361,13 @@ paths:
         '202':
           description: Job started
 
+  /api/export_csv/download:
+    get:
+      summary: Download CSV Export
+      responses:
+        '200':
+          description: CSV file download
+
   /api/daily_reminder:
     post:
       summary: Trigger Daily Reminder Job (Admin only)
@@ -367,6 +381,20 @@ paths:
       responses:
         '202':
           description: Job started
+
+  /api/charts/admin_summary:
+    get:
+      summary: Get Admin Summary Chart
+      responses:
+        '200':
+          description: Chart image
+
+  /api/charts/user_summary:
+    get:
+      summary: Get User Summary Chart
+      responses:
+        '200':
+          description: Chart image
 
   /api/send_mail:
     get:

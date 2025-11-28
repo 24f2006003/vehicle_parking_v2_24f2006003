@@ -1,10 +1,16 @@
-from flask import current_app as app, jsonify, request, abort
+from flask import current_app as app, jsonify, request, abort, send_file
 from .models import *
 from .database import db
 from flask_jwt_extended import create_access_token, current_user, jwt_required
 from functools import wraps
 from datetime import datetime
 from application.cache import cache
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import io
+import base64
+import csv
 
 def calculate_invoice_amount(reservation):
     return reservation.parking_cost or 0
@@ -169,7 +175,7 @@ def create_parking_lot():
     db.session.commit()
     return jsonify(message="Parking lot created successfully", lot_id=lot.id), 201
 
-@app.route("/api/lot/<int:lot_id>")
+@app.route("/api/lots/<int:lot_id>")
 def get_parking_lot(lot_id):
     lot = ParkingLot.query.get_or_404(lot_id)
     total = len(lot.spots) or lot.number_of_spots
@@ -249,10 +255,10 @@ def delete_parking_lot(lot_id):
     db.session.commit()
     return jsonify(message="Parking lot deleted successfully"), 200
 
-@app.route("/api/lots/<int:lot_id>/spots")
+@app.route("/api/lots/<int:lot_id>/spots", methods=["GET"])
 def get_parking_spots(lot_id):
-    status = request.args.get('status', None)
     query = ParkingSpot.query.filter_by(lot_id=lot_id)
+    status = request.args.get('status')
     if status in ['A', 'O']:
         query = query.filter_by(status=status)
     spots = query.all()
@@ -271,9 +277,35 @@ def get_parking_spots(lot_id):
                 spot_dict['user_id'] = active_res.user_id
                 spot_dict['username'] = active_res.user.username
                 spot_dict['parking_timestamp'] = active_res.parking_timestamp
+                spot_dict['lot_name'] = spot.lot.prime_location_name
         spots_json.append(spot_dict)
     return jsonify(spots_json), 200
 
+@app.route("/api/reservations", methods=["GET"])
+@jwt_required()
+def get_reservations():
+    if current_user.role == 'admin':
+        reservations = Reservation.query.all()
+    else:
+        reservations = Reservation.query.filter_by(user_id=current_user.id).all()
+        
+    res_json = []
+    for res in reservations:
+        res_dict = {
+            'id': res.id,
+            'reservation_id': res.id,
+            'spot_id': res.spot_id,
+            'lot_id': res.spot.lot_id,
+            'lot_name': res.spot.lot.prime_location_name,
+            'parking_timestamp': res.parking_timestamp,
+            'leaving_timestamp': res.leaving_timestamp,
+            'parking_cost': res.parking_cost,
+            'status': res.status,
+            'user_id': res.user_id,
+            'username': res.user.username
+        }
+        res_json.append(res_dict)
+    return jsonify(res_json), 200
 
 @app.route("/api/reservations", methods=["POST"])
 @jwt_required()
@@ -281,7 +313,9 @@ def create_reservation():
     lot_id = request.json.get("lot_id", None)
     parking_timestamp_str = request.json.get("parking_timestamp", None)
     leaving_timestamp_str = request.json.get("leaving_timestamp", None)
-    parking_cost = request.json.get("parking_cost", None)
+    parking_cost = request.json.get("parking_cost", 0)
+    if parking_cost is not None:
+        parking_cost = max(0, float(parking_cost))
 
     if parking_timestamp_str:
         parking_timestamp = datetime.fromisoformat(parking_timestamp_str)
@@ -301,47 +335,13 @@ def create_reservation():
 
     spot_id = spot.id
     
-    reservation = Reservation(spot_id=spot_id, user_id=current_user.id, parking_timestamp=parking_timestamp, leaving_timestamp=leaving_timestamp, parking_cost=parking_cost)
+    reservation = Reservation(spot_id=spot_id, user_id=current_user.id, parking_timestamp=parking_timestamp, leaving_timestamp=leaving_timestamp, parking_cost=parking_cost, status='active')
     db.session.add(reservation)
     spot.status = 'O'
     # Recalculate available spots for the lot
     spot.lot.available_spots = sum(1 for s in spot.lot.spots if s.status == 'A')
     db.session.commit()
-    return jsonify("Reservation created successfully"), 201
-
-@app.route("/api/reservations")
-@jwt_required()
-def get_reservations():
-    # If admin, return all. If user, return own.
-    if current_user.role == "admin":
-        reservations = Reservation.query.all()
-        reservation_list = [{
-            'id': reservation.id,
-            'lot_id': reservation.spot.lot_id,
-            'spot_id': reservation.spot_id,
-            'status': reservation.status
-        } for reservation in reservations]
-        return jsonify(reservations=reservation_list), 200
-    else:
-        user = User.query.get(current_user.id)
-        reservations = Reservation.query.filter_by(user_id=user.id).all()
-        reservations_json = []
-        for res in reservations:
-            res_dict = {
-                'reservation_id': res.id,
-                'spot_id': res.spot_id,
-                'parking_timestamp': res.parking_timestamp,
-                'leaving_timestamp': res.leaving_timestamp,
-                'parking_cost': res.parking_cost,
-                'status': res.status
-            }
-            reservations_json.append(res_dict)
-        return jsonify(reservations_json), 200
-
-@app.route("/api/reservations/<int:reservation_id>")
-@jwt_required()
-def get_reservation(reservation_id):
-    reservation = Reservation.query.get_or_404(reservation_id)
+    
     reservation_dict = {
         'reservation_id': reservation.id,
         'spot_id': reservation.spot_id,
@@ -352,17 +352,35 @@ def get_reservation(reservation_id):
     }
     return jsonify(reservation_dict), 200
 
+@app.route("/api/reservations/<int:reservation_id>", methods=["GET"])
+@jwt_required()
+def get_reservation(reservation_id):
+    reservation = Reservation.query.get_or_404(reservation_id)
+    if current_user.role != 'admin' and reservation.user_id != current_user.id:
+        return jsonify(message="Unauthorized"), 403
+        
+    res_dict = {
+        'id': reservation.id,
+        'reservation_id': reservation.id,
+        'spot_id': reservation.spot_id,
+        'lot_id': reservation.spot.lot_id,
+        'lot_name': reservation.spot.lot.prime_location_name,
+        'parking_timestamp': reservation.parking_timestamp,
+        'leaving_timestamp': reservation.leaving_timestamp,
+        'parking_cost': reservation.parking_cost,
+        'status': reservation.status,
+        'user_id': reservation.user_id,
+        'username': reservation.user.username
+    }
+    return jsonify(res_dict), 200
+
 @app.route("/api/reservations/<int:reservation_id>", methods=["PATCH"])
 @jwt_required()
 def update_reservation(reservation_id):
-    # Users: allowed actions via { action: "leave"|"complete" } only on their own reservations.
-    # Admins: can update fields: spot_id, status, parking_timestamp, leaving_timestamp, parking_cost.
-
     reservation = Reservation.query.get_or_404(reservation_id)
     data = request.json or {}
 
     if current_user.role == "admin":
-        # Admin can update full details (validate spot if provided)
         new_spot_id = data.get("spot_id")
         if new_spot_id is not None:
             spot = ParkingSpot.query.get_or_404(new_spot_id)
@@ -379,12 +397,13 @@ def update_reservation(reservation_id):
         db.session.commit()
         return jsonify(message="Reservation updated successfully"), 200
 
-    # User path: can only act on own reservation
     if reservation.user_id != current_user.id:
         return jsonify(message="Unauthorized"), 403
 
     action = data.get("action")
-    if action == "leave":
+    if action == "occupy":
+        reservation.status = "occupied"
+    elif action == "leave":
         reservation.status = "L"
         reservation.spot.status = 'A'
         reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
@@ -512,6 +531,24 @@ def trigger_export_csv():
     export_csv.delay(current_user.id)
     return jsonify(message="CSV export started. You will receive an email when it is ready."), 202
 
+@app.route("/api/export_csv/download", methods=["GET"])
+@jwt_required()
+def download_csv():
+    user_id = current_user.id
+    reservations = Reservation.query.filter_by(user_id=user_id).all()
+    
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['Reservation ID', 'Spot ID', 'Parking Timestamp', 'Leaving Timestamp', 'Cost', 'Status'])
+    for r in reservations:
+        cw.writerow([r.id, r.spot_id, r.parking_timestamp, r.leaving_timestamp, r.parking_cost, r.status])
+        
+    output = io.BytesIO()
+    output.write(si.getvalue().encode('utf-8'))
+    output.seek(0)
+    
+    return send_file(output, mimetype='text/csv', as_attachment=True, download_name='parking_history.csv')
+
 @app.route("/api/daily_reminder", methods=["POST"])
 @jwt_required()
 def trigger_daily_reminder():
@@ -529,6 +566,93 @@ def trigger_monthly_report():
         return jsonify(message="Unauthorized"), 403
     monthly_report.delay()
     return jsonify(message="Monthly report job started."), 202
+
+@app.route("/api/spots/occupied")
+@jwt_required()
+def get_all_occupied_spots():
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+    
+    spots = ParkingSpot.query.filter_by(status='O').all()
+    spots_json = []
+    for spot in spots:
+        spot_dict = {
+            'spot_id': spot.id,
+            'lot_id': spot.lot_id,
+            'lot_name': spot.lot.prime_location_name,
+            'status': spot.status
+        }
+        # Fetch active reservation details
+        active_res = Reservation.query.filter_by(spot_id=spot.id, status='active').first()
+        if active_res:
+            spot_dict['reservation_id'] = active_res.id
+            spot_dict['user_id'] = active_res.user_id
+            spot_dict['username'] = active_res.user.username
+            spot_dict['parking_timestamp'] = active_res.parking_timestamp
+        spots_json.append(spot_dict)
+    return jsonify(spots_json), 200
+
+@app.route("/api/charts/admin_summary")
+@jwt_required()
+def admin_summary_chart():
+    if current_user.role != "admin":
+        return jsonify(message="Unauthorized"), 403
+    
+    # Example: Bar chart of spots per lot
+    lots = ParkingLot.query.all()
+    names = [lot.prime_location_name for lot in lots]
+    spots = [len(lot.spots) for lot in lots]
+    
+    plt.figure(figsize=(10, 6))
+    plt.bar(names, spots, color='skyblue')
+    plt.xlabel('Parking Lots')
+    plt.ylabel('Total Spots')
+    plt.title('Capacity per Parking Lot')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+    
+    return send_file(img, mimetype='image/png')
+
+@app.route("/api/charts/user_summary")
+@jwt_required()
+def user_summary_chart():
+    # Example: Pie chart of user's reservation status
+    user_id = current_user.id
+    reservations = Reservation.query.filter_by(user_id=user_id).all()
+    
+    if not reservations:
+        # Return empty image or placeholder
+        plt.figure(figsize=(6, 4))
+        plt.text(0.5, 0.5, 'No Data', ha='center', va='center')
+        plt.axis('off')
+        img = io.BytesIO()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        plt.close()
+        return send_file(img, mimetype='image/png')
+
+    status_counts = {}
+    for r in reservations:
+        status_counts[r.status] = status_counts.get(r.status, 0) + 1
+        
+    labels = list(status_counts.keys())
+    sizes = list(status_counts.values())
+    
+    plt.figure(figsize=(6, 6))
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
+    plt.title('My Reservation History')
+    
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    plt.close()
+    
+    return send_file(img, mimetype='image/png')
 
 @app.route('/api/send_mail')
 def send_mail():

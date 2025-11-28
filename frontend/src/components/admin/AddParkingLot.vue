@@ -35,13 +35,9 @@
           </div>
 
           <div class="row mb-4">
-            <div class="col-md-6">
+            <div class="col-md-12">
               <label class="form-label">Total Spots</label>
               <input v-model.number="form.number_of_spots" type="number" class="form-control" min="1" required />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Available Spots</label>
-              <input v-model.number="form.available_spots" type="number" class="form-control" min="0" required />
             </div>
           </div>
 
@@ -66,8 +62,7 @@ const form = reactive({
   address: '',
   pin_code: '',
   price: 0,
-  number_of_spots: 0,
-  available_spots: 0
+  number_of_spots: 0
 });
 
 async function submitForm() {

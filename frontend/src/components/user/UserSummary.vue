@@ -47,30 +47,9 @@
       <div class="col-md-6">
         <div class="card h-100 shadow-sm border-0">
           <div class="card-header bg-white fw-bold py-3">Activity Overview</div>
-          <div class="card-body">
-            <p class="text-muted small mb-3">Your parking activity relative to a monthly cap of 30 bookings.</p>
-
-            <div class="mb-4">
-              <div class="d-flex justify-content-between mb-1">
-                <span class="fw-medium">Booking Frequency</span>
-                <span class="text-primary fw-bold">{{ activityPercent }}%</span>
-              </div>
-              <div class="progress" style="height: 10px;">
-                <div class="progress-bar bg-primary" role="progressbar" :style="{ width: activityPercent + '%' }"
-                  :aria-valuenow="activityPercent" aria-valuemin="0" aria-valuemax="100"></div>
-              </div>
-            </div>
-
-            <div class="mb-2">
-              <div class="d-flex justify-content-between mb-1">
-                <span class="fw-medium">Completion Rate</span>
-                <span class="text-success fw-bold">{{ completionRate }}%</span>
-              </div>
-              <div class="progress" style="height: 10px;">
-                <div class="progress-bar bg-success" role="progressbar" :style="{ width: completionRate + '%' }"
-                  :aria-valuenow="completionRate" aria-valuemin="0" aria-valuemax="100"></div>
-              </div>
-            </div>
+          <div class="card-body text-center">
+            <img :src="chartUrl" alt="Activity Chart" class="img-fluid" v-if="chartUrl" />
+            <div v-else class="spinner-border text-primary" role="status"></div>
           </div>
         </div>
       </div>
@@ -113,30 +92,16 @@ const reservations = ref([])
 const exporting = ref(false)
 const exportMessage = ref('')
 const spendingByLot = ref({})
-
-// Computed properties for charts
-const activityPercent = computed(() => {
-  // Assume a "cap" of 30 bookings per month for the visual
-  const cap = 30
-  const percent = (summary.value.totalReservations / cap) * 100
-  return Math.min(Math.round(percent), 100)
-})
-
-const completionRate = computed(() => {
-  if (summary.value.totalReservations === 0) return 0
-  const completed = reservations.value.filter(r => r.status === 'completed').length
-  return Math.round((completed / summary.value.totalReservations) * 100)
-})
-
-function getSpendingPercent(amount) {
-  if (summary.value.amountSpent === 0) return 0
-  return Math.round((amount / summary.value.amountSpent) * 100)
-}
+const chartUrl = ref('')
 
 onMounted(async () => {
   const token = localStorage.getItem('token')
   if (!token) return
   try {
+    // Fetch Chart
+    const res = await api.get('/api/charts/user_summary', { responseType: 'blob' })
+    chartUrl.value = URL.createObjectURL(res.data)
+
     const { data } = await api.get('/api/reservations')
     reservations.value = data
 
@@ -162,10 +127,22 @@ async function exportCSV() {
   exporting.value = true
   exportMessage.value = ''
   try {
+    // Trigger email export
     const { data } = await api.post('/api/export_csv')
     exportMessage.value = data.message || 'Export started successfully.'
+
+    // Trigger direct download
+    const response = await api.get('/api/export_csv/download', { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'parking_history.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
   } catch (e) {
-    exportMessage.value = 'Failed to start export.'
+    exportMessage.value = 'Failed to start export or download.'
   } finally {
     exporting.value = false
   }

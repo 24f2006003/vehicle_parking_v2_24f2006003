@@ -15,11 +15,12 @@ import ViewUsers from './components/admin/ViewUsers.vue';
 import ViewOccupiedSpots from './components/admin/ViewOccupiedSpots.vue';
 import AdminSummary from './components/admin/AdminSummary.vue';
 import ViewReservations from './components/admin/ViewReservations.vue';
+import UserDetails from './components/admin/UserDetails.vue';
 
 // User
 import UserDashboard from './components/user/UserDashboard.vue';
 import BookSpot from './components/user/BookSpot.vue';
-import ReleaseSpot from './components/user/ReleaseSpot.vue';
+import ManageBookings from './components/user/ManageBookings.vue';
 import ParkingHistory from './components/user/ParkingHistory.vue';
 import UserSummary from './components/user/UserSummary.vue';
 
@@ -37,6 +38,7 @@ const routes = [
             { path: '', redirect: '/admin/view' },
             { path: 'view', component: ViewParkingLots },
             { path: 'users', component: ViewUsers },
+            { path: 'users/:id', component: UserDetails },
             { path: 'reservations', component: ViewReservations },
             { path: 'search', component: () => import('./components/admin/AdminSearch.vue') },
             { path: 'summary', component: AdminSummary },
@@ -55,7 +57,7 @@ const routes = [
         children: [
             { path: '', redirect: '/user/summary' },
             { path: 'book/:lot_id', component: BookSpot },
-            { path: 'release/:spot_id', component: ReleaseSpot },
+            { path: 'manage-bookings', component: ManageBookings },
             { path: 'history', component: ParkingHistory },
             { path: 'summary', component: UserSummary }
         ]

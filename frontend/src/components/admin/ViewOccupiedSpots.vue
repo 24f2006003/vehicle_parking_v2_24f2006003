@@ -8,7 +8,7 @@
       <div class="card-body">
         <label class="form-label fw-bold">Select Lot:</label>
         <select v-model="selectedLot" class="form-select w-auto d-inline-block ms-2">
-          <option value="" disabled>-- Select Lot --</option>
+          <option value="">-- All Lots --</option>
           <option v-for="lot in lots" :key="lot.id" :value="lot.id">
             {{ lot.prime_location_name }}
           </option>
@@ -28,13 +28,15 @@
           <table class="table table-striped table-hover mb-0">
             <thead class="table-light">
               <tr>
+                <th>Lot Name</th>
                 <th>Spot Number</th>
                 <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="spot in spots" :key="spot.id">
+              <tr v-for="spot in spots" :key="spot.spot_id">
+                <td>{{ spot.lot_name || '-' }}</td>
                 <td>{{ spot.spot_id }}</td>
                 <td>
                   <span class="badge bg-danger">Occupied</span>
@@ -49,8 +51,8 @@
       </div>
     </div>
 
-    <div v-else-if="selectedLot && !loading" class="alert alert-info">
-      No occupied spots found for this lot.
+    <div v-else-if="!loading" class="alert alert-info">
+      No occupied spots found.
     </div>
   </div>
 </template>
@@ -69,26 +71,32 @@ onMounted(async () => {
   try {
     const { data } = await api.get('/api/lots')
     lots.value = data
+    await fetchSpots()
   } catch (e) {
-    error.value = 'Could not load lots'
+    error.value = 'Could not load data'
     console.error(e)
   } finally {
     loading.value = false
   }
 })
 
-watch(selectedLot, async (v) => {
-  spots.value = []
-  if (!v) return
+watch(selectedLot, async () => {
+  await fetchSpots()
+})
+
+async function fetchSpots() {
   loading.value = true
   try {
-    const { data } = await api.get(`/api/lots/${v}/spots`, { params: { status: 'O' } })
+    let url = '/api/spots/occupied'
+    if (selectedLot.value) {
+      url = `/api/lots/${selectedLot.value}/spots`
+    }
+    const { data } = await api.get(url, { params: { status: 'O' } })
     spots.value = data
   } catch (e) {
     error.value = 'Could not load spots'
-    console.error(e)
   } finally {
     loading.value = false
   }
-})
+}
 </script>

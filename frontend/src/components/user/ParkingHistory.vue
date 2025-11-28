@@ -27,7 +27,7 @@
             <tbody>
               <tr v-for="item in history" :key="item.reservation_id">
                 <td>{{ item.reservation_id }}</td>
-                <td>{{ item.lot_id || '-' }}</td>
+                <td>{{ item.lot_name || item.lot_id || '-' }}</td>
                 <td>{{ item.spot_id }}</td>
                 <td>{{ new Date(item.parking_timestamp).toLocaleString() }}</td>
                 <td>{{ item.leaving_timestamp ? new Date(item.leaving_timestamp).toLocaleString() : '-' }}</td>

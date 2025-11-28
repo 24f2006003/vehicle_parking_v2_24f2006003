@@ -27,11 +27,12 @@
           <div class="row mb-4">
             <div class="col-md-6">
               <label class="form-label">From</label>
-              <input type="datetime-local" v-model="form.from" class="form-control" required />
+              <input type="datetime-local" v-model="form.from" class="form-control" required :min="minDate" />
             </div>
             <div class="col-md-6">
               <label class="form-label">To</label>
-              <input type="datetime-local" v-model="form.to" class="form-control" required />
+              <input type="datetime-local" v-model="form.to" class="form-control" required
+                :min="form.from || minDate" />
             </div>
           </div>
 
@@ -64,6 +65,8 @@ const form = reactive({
   from: '',
   to: ''
 })
+
+const minDate = new Date().toISOString().slice(0, 16)
 
 onMounted(async () => {
   loading.value = true

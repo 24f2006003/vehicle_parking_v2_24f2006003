@@ -45,7 +45,10 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../../api'
+
+const router = useRouter()
 
 const users = ref([])
 const loading = ref(true)
@@ -63,6 +66,6 @@ onMounted(async () => {
 })
 
 function viewUser(user) {
-  alert(`User Details:\nID: ${user.id}\nUsername: ${user.username}\nEmail: ${user.email}\nRole: ${user.role}`)
+  router.push(`/admin/users/${user.id}`)
 }
 </script>

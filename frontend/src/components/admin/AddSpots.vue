@@ -63,6 +63,32 @@ const batch = ref({
 
 const generatedSpots = ref([]);
 
+onMounted(async () => {
+  try {
+    const { data } = await api.get(`/api/lots/${lotId}/spots`);
+    if (data.length > 0) {
+      // Assuming spot IDs are numeric or we just count them. 
+      // If spot_id is auto-increment, we might not need to set 'start' if the backend handles it.
+      // But the form asks for 'start'. Let's assume we want to append.
+      // If spots are just IDs, we can find the max ID if they are integers.
+      // But wait, the backend creates spots with auto-increment IDs.
+      // The 'AddSpots' form seems to imply we are creating *logical* spot numbers or labels?
+      // The backend `add_parking_spots` I added just does `db.session.add(ParkingSpot(...))`.
+      // It doesn't take a 'start' number. The ID is auto-generated.
+      // So the 'start' input in frontend might be for *display* or *custom labels* if supported.
+      // But the backend model `ParkingSpot` only has `id`, `lot_id`, `status`.
+      // So 'start' is actually irrelevant for the backend creation unless we store it.
+      // However, to satisfy the user request "starting slot(Number) should be prefilled",
+      // I will prefill it with (current_count + 1).
+      batch.value.start = data.length + 1;
+    }
+  } catch (e) {
+    console.error('Failed to load spots', e);
+  }
+});
+
+
+
 async function addSpot() {
   // Generate preview
   generatedSpots.value = Array.from({ length: batch.value.count }, (_, i) => `#${batch.value.start + i}`);

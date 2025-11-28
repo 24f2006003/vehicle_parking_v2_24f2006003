@@ -13,7 +13,7 @@
                             <tr>
                                 <th>ID</th>
                                 <th>Spot ID</th>
-                                <th>Lot ID</th>
+                                <th>Lot Name</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -22,14 +22,17 @@
                             <tr v-for="res in reservations" :key="res.id">
                                 <td>{{ res.id }}</td>
                                 <td>{{ res.spot_id }}</td>
-                                <td>{{ res.lot_id }}</td>
+                                <td>{{ res.lot_name || res.lot_id }}</td>
                                 <td>
                                     <span class="badge" :class="getStatusClass(res.status)">
                                         {{ res.status }}
                                     </span>
                                 </td>
                                 <td>
-                                    <!-- Add actions if needed, e.g., cancel -->
+                                    <button v-if="res.status === 'active' || res.status === 'reserved'"
+                                        class="btn btn-sm btn-outline-danger" @click="cancelReservation(res.id)">
+                                        Cancel
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>
@@ -65,6 +68,16 @@ function getStatusClass(status) {
         case 'completed': return 'bg-secondary'
         case 'cancelled': return 'bg-danger'
         default: return 'bg-info'
+    }
+}
+
+async function cancelReservation(id) {
+    if (!confirm('Cancel this reservation?')) return;
+    try {
+        await api.delete(`/api/reservations/${id}`);
+        reservations.value = reservations.value.filter(r => r.id !== id);
+    } catch (e) {
+        alert('Failed to cancel reservation');
     }
 }
 </script>

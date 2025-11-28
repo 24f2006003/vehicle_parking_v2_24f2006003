@@ -39,18 +39,9 @@
         <div class="col-md-12">
           <div class="card h-100">
             <div class="card-header fw-bold">Occupancy Overview</div>
-            <div class="card-body">
-              <div v-if="occupancyData.length === 0" class="text-muted">No parking lots available.</div>
-              <div v-for="lot in occupancyData" :key="lot.name" class="mb-3">
-                <div class="d-flex justify-content-between mb-1">
-                  <span>{{ lot.name }}</span>
-                  <span>{{ lot.percent }}% ({{ lot.occupied }}/{{ lot.total }})</span>
-                </div>
-                <div class="progress">
-                  <div class="progress-bar" role="progressbar" :style="{ width: lot.percent + '%' }"
-                    :aria-valuenow="lot.percent" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
-              </div>
+            <div class="card-body text-center">
+              <img :src="chartUrl" alt="Admin Chart" class="img-fluid" v-if="chartUrl" />
+              <div v-else class="spinner-border text-primary" role="status"></div>
             </div>
           </div>
         </div>
@@ -65,6 +56,7 @@ import api from '../../api'
 
 const data = ref({ total_users: 0, total_reservations: 0, total_parking_lots: 0 })
 const occupancyData = ref([])
+const chartUrl = ref('')
 const loading = ref(true)
 const error = ref('')
 
@@ -73,6 +65,10 @@ onMounted(async () => {
     // Fetch summary data
     const { data: d } = await api.get('/api/dashboard')
     data.value = d
+
+    // Fetch chart
+    const res = await api.get('/api/charts/admin_summary', { responseType: 'blob' })
+    chartUrl.value = URL.createObjectURL(res.data)
 
     // Fetch lots for occupancy
     const { data: lots } = await api.get('/api/lots')

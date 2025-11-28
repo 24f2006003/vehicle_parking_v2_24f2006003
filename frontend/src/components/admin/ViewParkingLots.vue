@@ -7,38 +7,6 @@
 
     <div v-else class="row g-4">
       <div class="col-md-6 col-lg-4" v-for="lot in lots" :key="lot.lot_id">
-        <div class="card h-100 shadow-sm">
-          <div class="card-header bg-light d-flex justify-content-between align-items-center">
-            <span class="fw-bold">{{ lot.prime_location_name }}</span>
-            <span class="badge bg-primary rounded-pill">{{ lot.number_of_spots }} Spots</span>
-          </div>
-          <div class="card-body">
-            <div class="mb-3 small text-muted">
-              <div>{{ lot.address }}</div>
-              <div>Pin: {{ lot.pin_code }} | Rate: ${{ lot.price }}/hr</div>
-            </div>
-
-            <!-- Mini Spot Grid -->
-            <div class="mb-3">
-              <div class="d-flex justify-content-between small mb-1">
-                <span>Status:</span>
-                <span class="text-success">{{ lot.available_spots }} Available</span>
-              </div>
-              <div class="spots-grid">
-                <span
-                  v-for="n in Math.min(lot.number_of_spots, 20)"
-                  :key="n"
-                  class="spot-dot"
-                  :class="getSpotClass(lot, n)"
-                  :title="n <= (lot.number_of_spots - lot.available_spots) ? 'Occupied' : 'Available'"
-                ></span>
-                <span v-if="lot.number_of_spots > 20" class="small text-muted ms-1">...</span>
-              </div>
-            </div>
-
-            <div class="d-flex gap-2 mt-auto">
-              <router-link :to="`/admin/edit-lot/${lot.lot_id}`" class="btn btn-sm btn-outline-warning flex-grow-1">Edit</router-link>
-              <router-link :to="`/admin/add-spots/${lot.lot_id}`" class="btn btn-sm btn-outline-secondary flex-grow-1">Spots</router-link>
               <button class="btn btn-sm btn-outline-danger" @click="deleteLot(lot)">Delete</button>
             </div>
           </div>
