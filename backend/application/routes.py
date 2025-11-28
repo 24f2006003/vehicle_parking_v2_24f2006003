@@ -3,7 +3,8 @@ from .models import *
 from .database import db
 from flask_jwt_extended import create_access_token, current_user, jwt_required
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
 from application.cache import cache
 import matplotlib
 matplotlib.use('Agg')
@@ -136,7 +137,8 @@ def get_parking_lots():
             'address': lot.address,
             'pin_code': lot.pin_code,
             'number_of_spots': total,
-            'available_spots': available
+            'available_spots': available,
+            'spots': [{'id': s.id, 'status': s.status} for s in lot.spots]
         }
         lots_json.append(lot_dict)
     return jsonify(lots_json), 200
@@ -291,6 +293,9 @@ def get_reservations():
         
     res_json = []
     for res in reservations:
+        if not res.spot:
+            continue
+            
         res_dict = {
             'id': res.id,
             'reservation_id': res.id,
@@ -320,7 +325,10 @@ def create_reservation():
     if parking_timestamp_str:
         parking_timestamp = datetime.fromisoformat(parking_timestamp_str)
     else:
-        parking_timestamp = datetime.now()
+        # IST Offset
+        ist_offset = timedelta(hours=5, minutes=30)
+        parking_timestamp = datetime.now(timezone.utc) + ist_offset
+        parking_timestamp = parking_timestamp.replace(tzinfo=None)
         
     if leaving_timestamp_str:
         leaving_timestamp = datetime.fromisoformat(leaving_timestamp_str)
@@ -331,7 +339,7 @@ def create_reservation():
     spot = ParkingSpot.query.filter_by(lot_id=lot_id, status='A').first()
     
     if not spot:
-        return jsonify("No available spots in this lot"), 400
+        return jsonify(message="No available spots in this lot"), 400
 
     spot_id = spot.id
     
@@ -379,6 +387,40 @@ def get_reservation(reservation_id):
 def update_reservation(reservation_id):
     reservation = Reservation.query.get_or_404(reservation_id)
     data = request.json or {}
+    action = data.get("action")
+
+    if action:
+        if current_user.role != "admin" and reservation.user_id != current_user.id:
+            return jsonify(message="Unauthorized"), 403
+
+        if action == "occupy":
+            reservation.status = "occupied"
+        elif action == "leave":
+            reservation.status = "L"
+            reservation.spot.status = 'A'
+            reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
+        elif action == "complete":
+            reservation.status = "C"
+            reservation.spot.status = 'A'
+            reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
+            
+            # IST Offset
+            ist_offset = timedelta(hours=5, minutes=30)
+            now = datetime.now(timezone.utc) + ist_offset
+            now = now.replace(tzinfo=None)
+            reservation.leaving_timestamp = now
+            
+            if reservation.parking_timestamp:
+                duration = now - reservation.parking_timestamp
+                hours = duration.total_seconds() / 3600
+                price_per_hour = reservation.spot.lot.price
+                reservation.parking_cost = max(0, round(hours * price_per_hour, 2))
+                
+        else:
+            return jsonify(message="Invalid action"), 400
+
+        db.session.commit()
+        return jsonify(message="Reservation updated successfully"), 200
 
     if current_user.role == "admin":
         new_spot_id = data.get("spot_id")
@@ -397,35 +439,7 @@ def update_reservation(reservation_id):
         db.session.commit()
         return jsonify(message="Reservation updated successfully"), 200
 
-    if reservation.user_id != current_user.id:
-        return jsonify(message="Unauthorized"), 403
-
-    action = data.get("action")
-    if action == "occupy":
-        reservation.status = "occupied"
-    elif action == "leave":
-        reservation.status = "L"
-        reservation.spot.status = 'A'
-        reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
-    elif action == "complete":
-        reservation.status = "C"
-        reservation.spot.status = 'A'
-        reservation.spot.lot.available_spots = sum(1 for s in reservation.spot.lot.spots if s.status == 'A')
-        
-        now = datetime.now()
-        reservation.leaving_timestamp = now
-        
-        if reservation.parking_timestamp:
-            duration = now - reservation.parking_timestamp
-            hours = duration.total_seconds() / 3600
-            price_per_hour = reservation.spot.lot.price
-            reservation.parking_cost = max(0, round(hours * price_per_hour, 2))
-            
-    else:
-        return jsonify(message="Invalid action"), 400
-
-    db.session.commit()
-    return jsonify(message="Reservation updated successfully"), 200
+    return jsonify(message="Unauthorized"), 403
 
 @app.route("/api/reservations/<int:reservation_id>", methods=["DELETE"])
 @jwt_required()
@@ -496,20 +510,20 @@ def get_user_reservations(user_id):
     reservations = Reservation.query.filter_by(user_id=user.id).all()
     reservation_list = [{
         'id': reservation.id,
-        'lot_id': reservation.spot.lot_id,
+        'lot_id': reservation.spot.lot_id if reservation.spot else None,
         'spot_id': reservation.spot_id,
         'status': reservation.status
-    } for reservation in reservations]
+    } for reservation in reservations if reservation.spot]
 
     return jsonify(reservations=reservation_list), 200
 
 @app.route("/api/reservations/<int:reservation_id>/invoice", methods=["GET", "POST"])
 @jwt_required()
 def create_reservation_invoice(reservation_id):
-    if current_user.role != "admin":
-        return jsonify(message="Unauthorized"), 403
-
     reservation = Reservation.query.get_or_404(reservation_id)
+    
+    if current_user.role != "admin" and reservation.user_id != current_user.id:
+        return jsonify(message="Unauthorized"), 403
 
     invoice = {
         'id': reservation.id,
@@ -523,13 +537,6 @@ def create_reservation_invoice(reservation_id):
 
 
 # Backend Jobs Triggers
-
-@app.route("/api/export_csv", methods=["POST"])
-@jwt_required()
-def trigger_export_csv():
-    from application.tasks import export_csv
-    export_csv.delay(current_user.id)
-    return jsonify(message="CSV export started. You will receive an email when it is ready."), 202
 
 @app.route("/api/export_csv/download", methods=["GET"])
 @jwt_required()
@@ -621,31 +628,40 @@ def admin_summary_chart():
 @app.route("/api/charts/user_summary")
 @jwt_required()
 def user_summary_chart():
-    # Example: Pie chart of user's reservation status
+    # Bar chart of daily amount spent (last 7 days)
     user_id = current_user.id
-    reservations = Reservation.query.filter_by(user_id=user_id).all()
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=7)
     
-    if not reservations:
-        # Return empty image or placeholder
-        plt.figure(figsize=(6, 4))
-        plt.text(0.5, 0.5, 'No Data', ha='center', va='center')
-        plt.axis('off')
-        img = io.BytesIO()
-        plt.savefig(img, format='png')
-        img.seek(0)
-        plt.close()
-        return send_file(img, mimetype='image/png')
+    reservations = Reservation.query.filter(
+        Reservation.user_id == user_id,
+        Reservation.leaving_timestamp >= start_date
+    ).all()
+    
+    daily_spending = {}
+    # Initialize last 7 days with 0
+    for i in range(7):
+        day = (start_date + timedelta(days=i)).strftime('%Y-%m-%d')
+        daily_spending[day] = 0.0
 
-    status_counts = {}
     for r in reservations:
-        status_counts[r.status] = status_counts.get(r.status, 0) + 1
+        if r.leaving_timestamp and r.parking_cost:
+            day = r.leaving_timestamp.strftime('%Y-%m-%d')
+            if day in daily_spending:
+                daily_spending[day] += float(r.parking_cost)
         
-    labels = list(status_counts.keys())
-    sizes = list(status_counts.values())
+    dates = list(daily_spending.keys())
+    # Format dates for display (e.g., "Nov 28")
+    display_dates = [datetime.strptime(d, '%Y-%m-%d').strftime('%b %d') for d in dates]
+    amounts = list(daily_spending.values())
     
-    plt.figure(figsize=(6, 6))
-    plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
-    plt.title('My Reservation History')
+    plt.figure(figsize=(10, 6))
+    plt.bar(display_dates, amounts, color='mediumpurple')
+    plt.xlabel('Date')
+    plt.ylabel('Amount Spent (₹)')
+    plt.title('Daily Spending (Last 7 Days)')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     
     img = io.BytesIO()
     plt.savefig(img, format='png')
@@ -653,11 +669,3 @@ def user_summary_chart():
     plt.close()
     
     return send_file(img, mimetype='image/png')
-
-@app.route('/api/send_mail')
-def send_mail():
-    from application.tasks import monthly_report
-    res = monthly_report.delay()
-    return{
-        "message": str(res)
-    }

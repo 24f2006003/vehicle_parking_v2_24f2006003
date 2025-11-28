@@ -35,8 +35,11 @@
     </nav>
 
     <!-- Content Area -->
+    <div class="container py-5">
+      <router-view></router-view>
+    </div>
   </div>
-  </div>
+
 </template>
 
 <script setup>

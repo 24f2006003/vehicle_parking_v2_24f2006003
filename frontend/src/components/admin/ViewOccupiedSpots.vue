@@ -42,7 +42,7 @@
                   <span class="badge bg-danger">Occupied</span>
                 </td>
                 <td>
-                  <button class="btn btn-sm btn-outline-danger">Force Release</button>
+                  <button class="btn btn-sm btn-outline-danger" @click="forceRelease(spot)">Force Release</button>
                 </td>
               </tr>
             </tbody>
@@ -99,4 +99,24 @@ async function fetchSpots() {
     loading.value = false
   }
 }
+
+async function forceRelease(spot) {
+  if (!confirm(`Force release spot ${spot.spot_id}?`)) return
+
+  try {
+    if (spot.reservation_id) {
+      // If there's a reservation, complete it
+      await api.patch(`/api/reservations/${spot.reservation_id}`, { action: 'complete' })
+    } else {
+      // If no reservation (phantom occupancy), just free the spot
+      await api.patch(`/api/spots/${spot.spot_id}`, { status: 'A' })
+    }
+    // Refresh list
+    await fetchSpots()
+    alert('Spot released successfully')
+  } catch (e) {
+    alert('Failed to release spot: ' + (e.response?.data?.message || e.message))
+  }
+}
+
 </script>

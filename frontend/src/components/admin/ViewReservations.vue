@@ -54,7 +54,7 @@ const error = ref('')
 onMounted(async () => {
     try {
         const { data } = await api.get('/api/reservations')
-        reservations.value = data.reservations
+        reservations.value = data
     } catch (e) {
         error.value = 'Could not load reservations'
     } finally {

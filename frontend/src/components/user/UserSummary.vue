@@ -127,9 +127,7 @@ async function exportCSV() {
   exporting.value = true
   exportMessage.value = ''
   try {
-    // Trigger email export
-    const { data } = await api.post('/api/export_csv')
-    exportMessage.value = data.message || 'Export started successfully.'
+    exportMessage.value = 'Export started successfully.'
 
     // Trigger direct download
     const response = await api.get('/api/export_csv/download', { responseType: 'blob' })
@@ -146,5 +144,10 @@ async function exportCSV() {
   } finally {
     exporting.value = false
   }
+}
+
+function getSpendingPercent(amount) {
+  if (summary.value.amountSpent === 0) return 0
+  return Math.round((amount / summary.value.amountSpent) * 100)
 }
 </script>

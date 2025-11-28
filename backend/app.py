@@ -6,6 +6,8 @@ from application.security import jwt
 from flask_cors import CORS
 from application.celery_init import celery_init_app
 from celery.schedules import crontab
+from flask.json.provider import DefaultJSONProvider
+from datetime import datetime, date
 
 app = None
 
@@ -19,11 +21,14 @@ def create_app():
     CORS(app)
     app.app_context().push()
     db.create_all()
+    
+    # Seed admin
     if not User.query.filter_by(role="admin").first():
         admin = User(username="admin", email="admin@example.com", password="admin", role="admin")
         db.session.add(admin)
         db.session.commit()
-    # Seed demo parking lots and spots if none exist
+        
+    # Seed demo lots
     if ParkingLot.query.count() == 0:
         demo_lots = [
             {"prime_location_name": "Central Plaza", "price": 25.0, "address": "Main Road", "pin_code": 600001, "number_of_spots": 10},
@@ -40,11 +45,19 @@ def create_app():
                 available_spots=lot["number_of_spots"],
             )
             db.session.add(pl)
-            db.session.flush()  # get pl.id
-            # create spots
+            db.session.flush()
             for _ in range(lot["number_of_spots"]):
                 db.session.add(ParkingSpot(lot_id=pl.id, status='A'))
         db.session.commit()
+
+    class CustomJSONProvider(DefaultJSONProvider):
+        def default(self, obj):
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            return super().default(obj)
+
+    app.json = CustomJSONProvider(app)
+
     return app
 
 app = create_app()
@@ -55,20 +68,17 @@ celery.autodiscover_tasks()
 def setup_periodic_tasks(sender, **kwargs):
     from application.tasks import daily_reminder, monthly_report
     
-    # Daily reminder every 2 minutes for demo
     sender.add_periodic_task(
         120.0,
         daily_reminder.s(),
         name='daily-reminder'
     )
     
-    # Monthly report every 5 minutes for demo
     sender.add_periodic_task(
         300.0,
         monthly_report.s(),
         name='monthly-report'
     )
-
 
 from application.routes import *
 

@@ -26,7 +26,7 @@
             <div class="col-md-6">
               <label class="form-label">Price / Hour</label>
               <div class="input-group">
-                <span class="input-group-text">$</span>
+                <span class="input-group-text">₹</span>
                 <input v-model.number="form.price" type="number" class="form-control" min="0" step="0.5" required />
               </div>
             </div>
@@ -36,10 +36,6 @@
             <div class="col-md-6">
               <label class="form-label">Total Spots</label>
               <input v-model.number="form.number_of_spots" type="number" class="form-control" min="1" required />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Available Spots</label>
-              <input v-model.number="form.available_spots" type="number" class="form-control" min="0" required />
             </div>
           </div>
 
