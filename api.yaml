@@ -42,6 +42,10 @@ paths:
                 properties:
                   access_token:
                     type: string
+                  role:
+                    type: string
+                  username:
+                    type: string
         '401':
           description: Invalid credentials
 
@@ -117,8 +121,6 @@ paths:
                   type: number
                   format: float
                 number_of_spots:
-                  type: integer
-                available_spots:
                   type: integer
       responses:
         '201':
@@ -317,7 +319,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [leave, complete]
+                  enum: [leave, complete, occupy]
                 spot_id:
                   type: integer
                 status:
@@ -357,13 +359,17 @@ paths:
       responses:
         '200':
           description: Invoice data
-
-  /api/export_csv:
     post:
-      summary: Trigger CSV Export Job
+      summary: Create/Get Reservation Invoice
+      parameters:
+        - name: reservation_id
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
-        '202':
-          description: Job started
+        '200':
+          description: Invoice data
 
   /api/export_csv/download:
     get:
@@ -400,9 +406,4 @@ paths:
         '200':
           description: Chart image
 
-  /api/send_mail:
-    get:
-      summary: Email Sending
-      responses:
-        '200':
-          description: Result
+
