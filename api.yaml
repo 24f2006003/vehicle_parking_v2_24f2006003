@@ -283,6 +283,8 @@ paths:
                   format: date-time
                 parking_cost:
                   type: number
+                vehicle_number:
+                  type: string
       responses:
         '201':
           description: Reservation created
@@ -326,6 +328,8 @@ paths:
                   type: string
                 parking_cost:
                   type: number
+                vehicle_number:
+                  type: string
       responses:
         '200':
           description: Updated successfully

@@ -95,9 +95,10 @@ async function submitReservation() {
 
     await api.post('/api/reservations', {
       lot_id: form.lotId,
-      parking_timestamp: form.from, // Correct key expected by backend
-      leaving_timestamp: form.to,   // Correct key expected by backend
-      parking_cost: cost
+      parking_timestamp: form.from,
+      leaving_timestamp: form.to,
+      parking_cost: cost,
+      vehicle_number: form.vehicleNumber
     })
     alert('Reservation successful!')
     router.push('/user/history')

@@ -30,6 +30,7 @@ class Reservation(db.Model):
     parking_timestamp = db.Column(db.DateTime, nullable=False)
     leaving_timestamp = db.Column(db.DateTime, nullable=True)
     parking_cost = db.Column(db.Float, nullable=True)
+    vehicle_number = db.Column(db.Text, nullable=True)
     status = db.Column(db.Text, nullable=False, default='active')  # active OR completed
 
     spot = db.relationship('ParkingSpot', backref=db.backref('reservations', lazy=True))

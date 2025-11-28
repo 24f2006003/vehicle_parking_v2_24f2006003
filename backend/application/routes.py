@@ -279,7 +279,10 @@ def get_parking_spots(lot_id):
                 spot_dict['user_id'] = active_res.user_id
                 spot_dict['username'] = active_res.user.username
                 spot_dict['parking_timestamp'] = active_res.parking_timestamp
-                spot_dict['lot_name'] = spot.lot.prime_location_name
+                spot_dict['vehicle_number'] = active_res.vehicle_number
+        
+        # Always include lot_name
+        spot_dict['lot_name'] = spot.lot.prime_location_name
         spots_json.append(spot_dict)
     return jsonify(spots_json), 200
 
@@ -307,7 +310,8 @@ def get_reservations():
             'parking_cost': res.parking_cost,
             'status': res.status,
             'user_id': res.user_id,
-            'username': res.user.username
+            'username': res.user.username,
+            'vehicle_number': res.vehicle_number
         }
         res_json.append(res_dict)
     return jsonify(res_json), 200
@@ -319,6 +323,8 @@ def create_reservation():
     parking_timestamp_str = request.json.get("parking_timestamp", None)
     leaving_timestamp_str = request.json.get("leaving_timestamp", None)
     parking_cost = request.json.get("parking_cost", 0)
+    vehicle_number = request.json.get("vehicle_number", None)
+    
     if parking_cost is not None:
         parking_cost = max(0, float(parking_cost))
 
@@ -343,7 +349,7 @@ def create_reservation():
 
     spot_id = spot.id
     
-    reservation = Reservation(spot_id=spot_id, user_id=current_user.id, parking_timestamp=parking_timestamp, leaving_timestamp=leaving_timestamp, parking_cost=parking_cost, status='active')
+    reservation = Reservation(spot_id=spot_id, user_id=current_user.id, parking_timestamp=parking_timestamp, leaving_timestamp=leaving_timestamp, parking_cost=parking_cost, status='active', vehicle_number=vehicle_number)
     db.session.add(reservation)
     spot.status = 'O'
     # Recalculate available spots for the lot
@@ -378,7 +384,8 @@ def get_reservation(reservation_id):
         'parking_cost': reservation.parking_cost,
         'status': reservation.status,
         'user_id': reservation.user_id,
-        'username': reservation.user.username
+        'username': reservation.user.username,
+        'vehicle_number': reservation.vehicle_number
     }
     return jsonify(res_dict), 200
 
@@ -596,6 +603,7 @@ def get_all_occupied_spots():
             spot_dict['user_id'] = active_res.user_id
             spot_dict['username'] = active_res.user.username
             spot_dict['parking_timestamp'] = active_res.parking_timestamp
+            spot_dict['vehicle_number'] = active_res.vehicle_number
         spots_json.append(spot_dict)
     return jsonify(spots_json), 200
 

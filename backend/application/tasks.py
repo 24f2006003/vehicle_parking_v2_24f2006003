@@ -11,16 +11,32 @@ import os
 @shared_task(ignore_result=False, name="daily_reminder")
 def daily_reminder():
     users = User.query.filter_by(role="user").all()
+    today_start = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + datetime.timedelta(days=1)
+
     for user in users:
-        # Check if user has made a reservation in the last 24 hours
-        last_24h = datetime.datetime.now() - datetime.timedelta(days=1)
-        recent_reservation = Reservation.query.filter_by(user_id=user.id).filter(Reservation.parking_timestamp >= last_24h).first()
+        # Check for ANY reservation today
+        todays_reservations = Reservation.query.filter_by(user_id=user.id).filter(
+            Reservation.parking_timestamp >= today_start,
+            Reservation.parking_timestamp < today_end
+        ).all()
         
-        if not recent_reservation:
+        if todays_reservations:
+            # Send Summary
+            subject = "Daily Parking Summary"
+            message = f"Hello {user.username},\n\nHere are your bookings for today:\n"
+            for res in todays_reservations:
+                status = res.status
+                cost = res.parking_cost or 0
+                message += f"- Lot: {res.spot.lot.prime_location_name}, Spot: {res.spot_id}, Time: {res.parking_timestamp}, Cost: {cost}, Status: {status}\n"
+            
+            send_email(user.email, subject, message, content="plain")
+        else:
+            # Send Reminder
             subject = "Daily Parking Reminder"
             message = f"Hello {user.username},\n\nYou haven't booked a parking spot today. Visit our app to book one if you need it!"
             send_email(user.email, subject, message, content="plain")
-    return "Daily reminders sent"
+    return "Daily reminders/summaries sent"
 
 # Task 2. Scheduled Job - Monthly Activity Report
 @shared_task(ignore_result=False, name="monthly_report")
@@ -62,7 +78,7 @@ def monthly_report():
             <p>Here is your parking activity for {{ month }}:</p>
             <ul>
                 <li>Total Bookings: {{ total_bookings }}</li>
-                <li>Total Spent: ${{ total_spent }}</li>
+                <li>Total Spent: Rs. {{ total_spent }}</li>
                 <li>Most Used Parking Lot: {{ most_used_lot }}</li>
             </ul>
             <p>Thank you for using our service!</p>

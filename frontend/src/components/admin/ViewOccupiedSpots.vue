@@ -54,6 +54,37 @@
     <div v-else-if="!loading" class="alert alert-info">
       No occupied spots found.
     </div>
+
+    <!-- Details Modal -->
+    <!-- Details Modal -->
+    <div class="modal fade" :class="{ show: showModal }" :style="{ display: showModal ? 'block' : 'none' }"
+      id="detailsModal" tabindex="-1" aria-hidden="true" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Spot Details</h5>
+            <button type="button" class="btn-close" @click="closeModal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" v-if="selectedSpot">
+            <p><strong>Lot Name:</strong> {{ selectedSpot.lot_name }}</p>
+            <p><strong>Spot ID:</strong> {{ selectedSpot.spot_id }}</p>
+            <hr>
+            <div v-if="selectedSpot.reservation_id">
+              <p><strong>Username:</strong> {{ selectedSpot.username }}</p>
+              <p><strong>Vehicle Number:</strong> {{ selectedSpot.vehicle_number || 'N/A' }}</p>
+              <p><strong>Parking Time:</strong> {{ selectedSpot.parking_timestamp }}</p>
+            </div>
+            <div v-else>
+              <p class="text-muted">No active reservation linked to this spot.</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="closeModal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="showModal" class="modal-backdrop fade show"></div>
   </div>
 </template>
 
@@ -66,6 +97,8 @@ const selectedLot = ref('')
 const spots = ref([])
 const loading = ref(true)
 const error = ref('')
+const selectedSpot = ref(null)
+const showModal = ref(false)
 
 onMounted(async () => {
   try {
@@ -98,6 +131,16 @@ async function fetchSpots() {
   } finally {
     loading.value = false
   }
+}
+
+function showDetails(spot) {
+  selectedSpot.value = spot
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+  selectedSpot.value = null
 }
 
 async function forceRelease(spot) {

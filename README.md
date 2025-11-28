@@ -45,6 +45,7 @@ A comprehensive web application for managing vehicle parking, featuring role-bas
 - `parking_timestamp`: DateTime, Not Null
 - `leaving_timestamp`: DateTime, Nullable
 - `parking_cost`: Float, Nullable
+- `vehicle_number`: Text, Nullable
 - `status`: Text, Default 'active' (Constraints: 'active', 'completed', 'cancelled')
 
 **Design Rationale**: The schema is normalized to separate concerns. `ParkingLot` manages static lot info, while `ParkingSpot` tracks individual spot status. `Reservation` links users to spots with time tracking, allowing for historical data analysis and billing.
