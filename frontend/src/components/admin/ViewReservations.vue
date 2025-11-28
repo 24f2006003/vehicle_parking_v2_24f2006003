@@ -29,6 +29,10 @@
                                     </span>
                                 </td>
                                 <td>
+                                    <button class="btn btn-sm btn-outline-primary me-2"
+                                        @click="$router.push(`/admin/reservations/${res.id}`)">
+                                        View
+                                    </button>
                                     <button v-if="res.status === 'active' || res.status === 'reserved'"
                                         class="btn btn-sm btn-outline-danger" @click="cancelReservation(res.id)">
                                         Cancel
