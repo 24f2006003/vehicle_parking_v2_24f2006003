@@ -76,7 +76,7 @@ The API is designed using RESTful principles. It exposes endpoints for authentic
 - **Performance**: Redis caching implemented for dashboard statistics to reduce DB load.
 
 ## Project Video Demonstration
-[Insert Google Drive Video Link Here]
+[Click here to watch video](https://drive.google.com/file/d/1gi3-6P2vSnPgRaN_hhV-CWIOXym76XH0/view?usp=sharing)
 
 ## How to Run
 
